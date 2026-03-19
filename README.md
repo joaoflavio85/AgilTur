@@ -14,6 +14,27 @@ arame-turismo/
 
 ## 🚀 Como rodar o projeto
 
+### Com Docker
+
+Na raiz do projeto, execute:
+
+```bash
+docker compose up --build -d
+```
+
+Depois acesse:
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3001/api
+
+Para parar os containers:
+
+```bash
+docker compose down
+```
+
+> Observacao: o backend usa as variaveis do arquivo `backend/.env`, incluindo `DATABASE_URL`.
+
 ### Pré-requisitos
 
 - Node.js v18+
