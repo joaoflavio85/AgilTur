@@ -1,0 +1,6 @@
+@ArameTurismo.Api_HostAddress = http://localhost:5198
+
+GET {{ArameTurismo.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,231 @@
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-left: 4px solid transparent;
+}
+
+.stat-blue { border-left-color: var(--primary); }
+.stat-green { border-left-color: var(--success); }
+.stat-orange { border-left-color: var(--warning); }
+.stat-purple { border-left-color: #0ea5e9; }
+
+.stat-icon {
+  font-size: 32px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.stat-value {
+  font-family: 'Sora', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.stat-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.admin-kpis-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.admin-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.admin-kpi-card span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.admin-kpi-card strong {
+  display: block;
+  margin-top: 4px;
+  font-family: 'Sora', sans-serif;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.admin-kpi-card small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.admin-kpi-card.is-positive {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.admin-kpi-card.is-positive strong {
+  color: #15803d;
+}
+
+.admin-kpi-card.is-negative {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.admin-kpi-card.is-negative strong {
+  color: #b91c1c;
+}
+
+.admin-kpi-card.is-neutral {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+}
+
+.admin-kpi-card.is-neutral strong {
+  color: #334155;
+}
+
+.admin-charts-grid {
+  margin-top: 16px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.agent-grid {
+  margin-bottom: 14px;
+}
+
+.agent-panels-grid {
+  margin-top: 4px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.agent-list-item span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.agent-list-item strong {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.agent-list-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.admin-chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.admin-chart-card h4 {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.h-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.h-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.h-bar-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.h-bar-top strong {
+  color: var(--text);
+}
+
+.h-bar-track {
+  width: 100%;
+  height: 10px;
+  background: #edf2f7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.h-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+}
+
+@media (max-width: 1200px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-kpis-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-charts-grid { grid-template-columns: 1fr; }
+  .agent-panels-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .admin-kpis-grid { grid-template-columns: 1fr; }
+}
