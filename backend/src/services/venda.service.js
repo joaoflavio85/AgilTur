@@ -5,6 +5,7 @@ const vendaRepository = require('../repositories/venda.repository');
 const auditoriaService = require('./auditoria.service');
 
 const FORMAS_PAGAMENTO = ['CARTAO', 'BOLETO', 'PIX', 'OPERADORA'];
+const PERCENTUAL_BONIFICACAO_PADRAO = 5;
 
 const toNumber = (value, fieldName) => {
   const parsed = Number(value);
@@ -23,6 +24,107 @@ const BACKEND_ROOT = path.resolve(__dirname, '..', '..');
  * Serviço de Vendas
  */
 class VendaService {
+  async obterPercentualBonificacaoIndicacao(tx) {
+    const empresa = await tx.empresa.findFirst({
+      where: { ativo: true },
+      orderBy: { id: 'asc' },
+      select: { percentualBonificacaoIndicacao: true },
+    });
+
+    const percentual = Number(empresa?.percentualBonificacaoIndicacao);
+    if (!Number.isFinite(percentual) || percentual < 0) return PERCENTUAL_BONIFICACAO_PADRAO;
+    return percentual;
+  }
+
+  async validarIndicacao(tx, { clienteId, clienteIndicadorId, vendaPorIndicacao }) {
+    const indicadorId = clienteIndicadorId ? Number(clienteIndicadorId) : null;
+    const indicadoId = Number(clienteId);
+
+    if (!vendaPorIndicacao && !indicadorId) {
+      return null;
+    }
+
+    if (vendaPorIndicacao && !indicadorId) {
+      const err = new Error('Informe o cliente indicador quando a venda for por indicacao.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (indicadorId === indicadoId) {
+      const err = new Error('Cliente nao pode indicar a si mesmo.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const indicadorExiste = await tx.cliente.findUnique({ where: { id: indicadorId } });
+    if (!indicadorExiste) {
+      const err = new Error('Cliente indicador nao encontrado.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    return indicadorId;
+  }
+
+  async sincronizarIndicacaoVenda(tx, venda, usuario) {
+    if (!venda.vendaPorIndicacao || !venda.clienteIndicadorId) {
+      await tx.indicacaoCliente.deleteMany({ where: { vendaId: venda.id } });
+      return;
+    }
+
+    const percentualBonificacao = await this.obterPercentualBonificacaoIndicacao(tx);
+    const fator = percentualBonificacao / 100;
+    const bonificacaoGerada = round2(Number(venda.valorComissao || 0) * fator);
+
+    const existente = await tx.indicacaoCliente.findFirst({ where: { vendaId: venda.id } });
+
+    if (existente) {
+      await tx.indicacaoCliente.update({
+        where: { id: existente.id },
+        data: {
+          clienteIndicadorId: Number(venda.clienteIndicadorId),
+          clienteIndicadoId: Number(venda.clienteId),
+          valorComissaoVenda: Number(venda.valorComissao || 0),
+          bonificacaoGerada,
+          percentualBonificacaoAplicado: percentualBonificacao,
+          dataIndicacao: venda.dataVenda,
+          observacoes: `Indicacao vinculada automaticamente pela venda #${venda.id}`,
+        },
+      });
+      return;
+    }
+
+    await tx.indicacaoCliente.create({
+      data: {
+        clienteIndicadorId: Number(venda.clienteIndicadorId),
+        clienteIndicadoId: Number(venda.clienteId),
+        vendaId: venda.id,
+        valorComissaoVenda: Number(venda.valorComissao || 0),
+        bonificacaoGerada,
+        percentualBonificacaoAplicado: percentualBonificacao,
+        statusBonificacao: 'PENDENTE',
+        dataIndicacao: venda.dataVenda,
+        observacoes: `Indicacao vinculada automaticamente pela venda #${venda.id}`,
+      },
+    });
+
+    await auditoriaService.registrar({
+      entidade: 'INDICACAO_CLIENTE',
+      acao: 'CRIACAO_AUTOMATICA',
+      usuario,
+      metadados: {
+        vendaId: venda.id,
+        clienteIndicadorId: Number(venda.clienteIndicadorId),
+        clienteIndicadoId: Number(venda.clienteId),
+      },
+      depois: {
+        percentualBonificacaoAplicado: percentualBonificacao,
+        bonificacaoGerada,
+        valorComissaoVenda: Number(venda.valorComissao || 0),
+      },
+    });
+  }
+
   toAbsoluteFilePath(storedPath) {
     if (!storedPath) return null;
     if (path.isAbsolute(storedPath)) return storedPath;
@@ -141,6 +243,9 @@ class VendaService {
       ...filtros,
       agenteId: agenteIdEscopo,
       clienteNome: filtros?.clienteNome?.trim() || undefined,
+      vendaPorIndicacao: filtros?.vendaPorIndicacao === undefined || filtros?.vendaPorIndicacao === ''
+        ? undefined
+        : (String(filtros?.vendaPorIndicacao).toLowerCase() === 'true' || String(filtros?.vendaPorIndicacao) === '1'),
       idReserva: filtros?.idReserva?.trim() || undefined,
       dataVendaInicio: filtros?.dataVendaInicio || undefined,
       dataVendaFim: filtros?.dataVendaFim || undefined,
@@ -203,10 +308,18 @@ class VendaService {
         throw err;
       }
 
+      const indicadorId = await this.validarIndicacao(tx, {
+        clienteId: data.clienteId,
+        clienteIndicadorId: data.clienteIndicadorId,
+        vendaPorIndicacao: Boolean(data.vendaPorIndicacao),
+      });
+
       const vendaCriada = await tx.venda.create({
         data: {
           ...data,
           clienteId: Number(data.clienteId),
+          clienteIndicadorId: indicadorId,
+          vendaPorIndicacao: Boolean(data.vendaPorIndicacao) || Boolean(indicadorId),
           agenteId: Number(data.agenteId),
           operadoraId: Number(data.operadoraId),
           valorTotal,
@@ -221,10 +334,13 @@ class VendaService {
         await this.sincronizarContasReceberComissao(tx, vendaCriada.id, pagamentos);
       }
 
+      await this.sincronizarIndicacaoVenda(tx, vendaCriada, usuario);
+
       const vendaCompleta = await tx.venda.findUnique({
         where: { id: vendaCriada.id },
         include: {
           cliente: { select: { id: true, nome: true, cpf: true } },
+          clienteIndicador: { select: { id: true, nome: true, cpf: true } },
           agente: { select: { id: true, nome: true } },
           operadora: { select: { id: true, nome: true } },
           pagamentos: true,
@@ -303,11 +419,27 @@ class VendaService {
     );
 
     return prisma.$transaction(async (tx) => {
+      const clienteIdFinal = data.clienteId !== undefined ? Number(data.clienteId) : Number(vendaAtual.clienteId);
+      const indicadorIdInformado = data.clienteIndicadorId !== undefined
+        ? data.clienteIndicadorId
+        : vendaAtual.clienteIndicadorId;
+      const vendaPorIndicacaoFinal = data.vendaPorIndicacao !== undefined
+        ? Boolean(data.vendaPorIndicacao)
+        : Boolean(vendaAtual.vendaPorIndicacao);
+
+      const indicadorIdFinal = await this.validarIndicacao(tx, {
+        clienteId: clienteIdFinal,
+        clienteIndicadorId: indicadorIdInformado,
+        vendaPorIndicacao: vendaPorIndicacaoFinal,
+      });
+
       const vendaAtualizada = await tx.venda.update({
         where: { id: Number(id) },
         data: {
           ...data,
           ...(data.clienteId !== undefined && { clienteId: Number(data.clienteId) }),
+          clienteIndicadorId: indicadorIdFinal,
+          vendaPorIndicacao: vendaPorIndicacaoFinal || Boolean(indicadorIdFinal),
           ...(data.agenteId !== undefined && { agenteId: Number(data.agenteId) }),
           ...(data.operadoraId !== undefined && { operadoraId: Number(data.operadoraId) }),
           ...(data.valorTotal !== undefined && { valorTotal: valorTotalFinal }),
@@ -331,6 +463,8 @@ class VendaService {
         await this.sincronizarContasReceberComissao(tx, vendaAtualizada.id, pagamentosFinais);
       }
 
+      await this.sincronizarIndicacaoVenda(tx, vendaAtualizada, usuario);
+
       if (statusFinal !== 'PAGA' && vendaAtual.status === 'PAGA') {
         await tx.contaReceber.deleteMany({
           where: {
@@ -344,6 +478,7 @@ class VendaService {
         where: { id: vendaAtualizada.id },
         include: {
           cliente: { select: { id: true, nome: true, cpf: true } },
+          clienteIndicador: { select: { id: true, nome: true, cpf: true } },
           agente: { select: { id: true, nome: true } },
           operadora: { select: { id: true, nome: true } },
           pagamentos: true,

@@ -357,3 +357,28 @@ tbody tr:hover { background: var(--surface2); }
   gap: 6px;
   align-items: center;
 }
+
+.proposta-quick-panel {
+  position: sticky;
+  top: -8px;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(255,255,255,1) 92%, rgba(255,255,255,0.9) 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+.proposta-quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .proposta-quick-grid {
+    grid-template-columns: 1fr;
+  }
+}

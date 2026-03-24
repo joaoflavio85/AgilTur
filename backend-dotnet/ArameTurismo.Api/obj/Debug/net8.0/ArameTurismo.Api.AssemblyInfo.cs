@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArameTurismo.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3eb5fac81a4d8dd0ae4ce655b5bd119ece86e75e")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArameTurismo.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArameTurismo.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

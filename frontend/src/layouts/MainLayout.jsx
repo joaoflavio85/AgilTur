@@ -8,6 +8,7 @@ const navItems = [
   { to: '/agenda', label: 'Agenda', icon: '🗓️' },
   { to: '/clientes', label: 'Cliente', icon: '👥' },
   { to: '/propostas', label: 'Propostas', icon: '📝' },
+  { to: '/creditos', label: 'Creditos', icon: '🎟️' },
   { to: '/vendas', label: 'Vendas', icon: '💼' },
   { to: '/pos-venda', label: 'Pos Vendas', icon: '⭐' },
 ];
@@ -18,6 +19,7 @@ const navGroups = [
     items: [
       { to: '/contas-pagar', label: 'Contas a Pagar', icon: '📋' },
       { to: '/contas-receber', label: 'Contas a Receber', icon: '💰' },
+      { to: '/brindes', label: 'Brindes', icon: '🎁' },
     ],
   },
   {
@@ -41,6 +43,7 @@ export default function MainLayout() {
   const podeVerItem = (item) => {
     if (item.to === '/contas-pagar' && usuario?.perfil !== 'ADMIN') return false;
     if (item.to === '/contas-receber' && usuario?.perfil !== 'ADMIN') return false;
+    if (item.to === '/brindes' && usuario?.perfil !== 'ADMIN') return false;
     if (item.to === '/empresa' && usuario?.perfil !== 'ADMIN') return false;
     if (item.to === '/operadoras' && usuario?.perfil !== 'ADMIN') return false;
     if (item.to === '/centros-custo' && usuario?.perfil !== 'ADMIN') return false;

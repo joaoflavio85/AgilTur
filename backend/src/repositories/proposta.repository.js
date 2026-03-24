@@ -99,7 +99,7 @@ class PropostaRepository {
 
   includeBase() {
     return {
-      cliente: { select: { id: true, nome: true, cpf: true } },
+      cliente: { select: { id: true, nome: true, cpf: true, telefone: true, email: true } },
       agente: { select: { id: true, nome: true } },
       operadora: { select: { id: true, nome: true } },
       vendas: {

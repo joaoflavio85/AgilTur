@@ -48,6 +48,8 @@ const MODELOS_POS_VENDA = {
 };
 const empty = {
   clienteId:'',
+  clienteIndicadorId:'',
+  vendaPorIndicacao:false,
   operadoraId:'',
   idReserva:'',
   tipoServico:'PACOTE',
@@ -129,6 +131,7 @@ export default function Vendas() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('ABERTA');
+  const [filtroIndicacao, setFiltroIndicacao] = useState('');
   const [filtroClienteNome, setFiltroClienteNome] = useState('');
   const [filtroClienteNomeDebounced, setFiltroClienteNomeDebounced] = useState('');
   const [filtroOperadoraId, setFiltroOperadoraId] = useState('');
@@ -147,6 +150,7 @@ export default function Vendas() {
 
   const montarFiltros = () => ({
     status: filtroStatus || undefined,
+    vendaPorIndicacao: filtroIndicacao === '' ? undefined : (filtroIndicacao === 'SIM'),
     clienteNome: filtroClienteNomeDebounced || undefined,
     operadoraId: filtroOperadoraId || undefined,
     agenteId: isAdmin ? (filtroAgenteId || undefined) : undefined,
@@ -219,11 +223,11 @@ export default function Vendas() {
 
   useEffect(() => {
     carregarVendas();
-  }, [filtroStatus, filtroClienteNomeDebounced, filtroOperadoraId, filtroAgenteId, filtroReserva, filtroDataInicio, filtroDataFim, pagination.page, pagination.pageSize]);
+  }, [filtroStatus, filtroIndicacao, filtroClienteNomeDebounced, filtroOperadoraId, filtroAgenteId, filtroReserva, filtroDataInicio, filtroDataFim, pagination.page, pagination.pageSize]);
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }));
-  }, [filtroStatus, filtroClienteNomeDebounced, filtroOperadoraId, filtroAgenteId, filtroReserva, filtroDataInicio, filtroDataFim]);
+  }, [filtroStatus, filtroIndicacao, filtroClienteNomeDebounced, filtroOperadoraId, filtroAgenteId, filtroReserva, filtroDataInicio, filtroDataFim]);
 
   const abrirCriar = () => {
     setForm(empty);
@@ -236,6 +240,8 @@ export default function Vendas() {
   const abrirEditar = (v) => {
     setForm({
       clienteId: v.clienteId,
+      clienteIndicadorId: v.clienteIndicadorId || '',
+      vendaPorIndicacao: Boolean(v.vendaPorIndicacao || v.clienteIndicadorId),
       operadoraId: v.operadoraId,
       idReserva: v.idReserva || '',
       tipoServico: v.tipoServico, descricao: v.descricao,
@@ -397,6 +403,8 @@ export default function Vendas() {
       const payload = {
         ...form,
         clienteId: Number(form.clienteId),
+        clienteIndicadorId: form.clienteIndicadorId ? Number(form.clienteIndicadorId) : null,
+        vendaPorIndicacao: Boolean(form.vendaPorIndicacao),
         operadoraId: Number(form.operadoraId),
         valorTotal: Number(form.valorTotal),
         valorComissao: Number(form.valorComissao),
@@ -534,6 +542,8 @@ export default function Vendas() {
     !form.descricao ||
     form.valorTotal === '' ||
     form.valorComissao === '' ||
+    (form.vendaPorIndicacao && !form.clienteIndicadorId) ||
+    (form.vendaPorIndicacao && Number(form.clienteIndicadorId) === Number(form.clienteId)) ||
     (pagamentosObrigatorios && (pagamentosInvalidos || divergenciaPagamentos));
 
   return (
@@ -595,6 +605,12 @@ export default function Vendas() {
           {STATUS_VENDA.map((s) => <option key={s}>{s}</option>)}
         </select>
 
+        <select className="form-control" style={{width:220}} value={filtroIndicacao} onChange={(e) => setFiltroIndicacao(e.target.value)}>
+          <option value="">Todas as vendas</option>
+          <option value="SIM">Somente vendas por indicacao</option>
+          <option value="NAO">Sem indicacao</option>
+        </select>
+
         <button
           className="btn btn-outline"
           type="button"
@@ -604,6 +620,7 @@ export default function Vendas() {
             setFiltroAgenteId('');
             setFiltroReserva('');
             setFiltroStatus('ABERTA');
+            setFiltroIndicacao('');
             setFiltroDataInicio(intervaloPadrao.inicio);
             setFiltroDataFim(intervaloPadrao.fim);
             setPagination((prev) => ({ ...prev, page: 1 }));
@@ -625,13 +642,13 @@ export default function Vendas() {
       <div className="table-container">
         <table>
           <thead>
-            <tr><th>Venda / Cliente</th><th>Operadora</th><th>ID Reserva</th><th>Tipo</th><th>Valor</th><th>Comissão</th><th>Pagamentos</th><th>Status</th><th>Viagem</th><th>Ações</th></tr>
+            <tr><th>Venda / Cliente</th><th>Operadora</th><th>ID Reserva</th><th>Tipo</th><th>Valor</th><th>Comissão</th><th>Indicação</th><th>Pagamentos</th><th>Status</th><th>Viagem</th><th>Ações</th></tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10}><div className="loading"><div className="spinner"/></div></td></tr>
+              <tr><td colSpan={11}><div className="loading"><div className="spinner"/></div></td></tr>
             ) : vendas.length === 0 ? (
-              <tr><td colSpan={10}><div className="empty-state">Nenhuma venda encontrada.</div></td></tr>
+              <tr><td colSpan={11}><div className="empty-state">Nenhuma venda encontrada.</div></td></tr>
             ) : vendas.map((v) => (
               <tr key={v.id}>
                 <td>
@@ -642,6 +659,11 @@ export default function Vendas() {
                 <td><span className="badge badge-default">{v.tipoServico}</span></td>
                 <td><strong>{fmtCurr(v.valorTotal)}</strong></td>
                 <td>{fmtCurr(v.valorComissao)}</td>
+                <td style={{fontSize:12}}>
+                  {v.vendaPorIndicacao
+                    ? <span className="badge badge-success">Indicada por {v.clienteIndicador?.nome || `#${v.clienteIndicadorId}`}</span>
+                    : <span className="badge badge-default">Nao</span>}
+                </td>
                 <td style={{fontSize:12}}>
                   {v.pagamentos?.length
                     ? v.pagamentos.map((p) => `${fmtFormaPagamento(p.formaPagamento)}: ${fmtCurr(p.valor)}`).join(' | ')
@@ -717,6 +739,41 @@ export default function Vendas() {
                   <option value="">Selecione...</option>
                   {operadoras.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
                 </select>
+              </div>
+              <div className="form-group">
+                <label>Venda por indicação?</label>
+                <select
+                  className="form-control"
+                  value={form.vendaPorIndicacao ? 'SIM' : 'NAO'}
+                  onChange={(e) => {
+                    const ativo = e.target.value === 'SIM';
+                    setForm((prev) => ({
+                      ...prev,
+                      vendaPorIndicacao: ativo,
+                      ...(ativo ? {} : { clienteIndicadorId: '' }),
+                    }));
+                  }}
+                >
+                  <option value="NAO">Nao</option>
+                  <option value="SIM">Sim</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Cliente Indicador {form.vendaPorIndicacao ? '*' : '(opcional)'}</label>
+                <select
+                  className="form-control"
+                  value={form.clienteIndicadorId}
+                  onChange={f('clienteIndicadorId')}
+                  disabled={!form.vendaPorIndicacao}
+                >
+                  <option value="">Selecione...</option>
+                  {clientes
+                    .filter((c) => Number(c.id) !== Number(form.clienteId))
+                    .map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                {form.vendaPorIndicacao && Number(form.clienteIndicadorId) === Number(form.clienteId) && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--danger)' }}>Cliente nao pode indicar a si mesmo.</div>
+                )}
               </div>
               <div className="form-group">
                 <label>ID Reserva *</label>

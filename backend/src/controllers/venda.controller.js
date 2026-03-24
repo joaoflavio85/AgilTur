@@ -9,6 +9,8 @@ const formasPagamentoSchema = z.object({
 
 const vendaSchema = z.object({
   clienteId: z.number().or(z.string().transform(Number)),
+  clienteIndicadorId: z.number().or(z.string().transform(Number)).optional().nullable(),
+  vendaPorIndicacao: z.boolean().optional(),
   operadoraId: z.number().or(z.string().transform(Number)),
   idReserva: z.string().min(1, 'ID da reserva obrigatorio.').max(20, 'ID da reserva deve ter no maximo 20 caracteres.'),
   tipoServico: z.enum(['AEREO', 'HOTEL', 'PACOTE', 'CRUZEIRO', 'RODOVIARIO', 'SEGURO_VIAGEM', 'OUTROS']),
@@ -34,6 +36,7 @@ class VendaController {
         agenteId,
         operadoraId,
         status,
+        vendaPorIndicacao,
         tipoServico,
         idReserva,
         dataVendaInicio,
@@ -47,6 +50,7 @@ class VendaController {
         agenteId,
         operadoraId,
         status,
+        vendaPorIndicacao,
         tipoServico,
         idReserva,
         dataVendaInicio,

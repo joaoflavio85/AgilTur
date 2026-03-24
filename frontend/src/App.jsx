@@ -16,6 +16,8 @@ import Usuarios from './pages/Usuarios';
 import Agenda from './pages/Agenda';
 import Auditoria from './pages/Auditoria';
 import Empresa from './pages/Empresa';
+import CreditosClientes from './pages/CreditosClientes';
+import Brindes from './pages/Brindes';
 import PropostaOrcamentosPage from './features/orcamentos/pages/PropostaOrcamentosPage';
 
 function ProtectedRoute({ children }) {
@@ -40,10 +42,12 @@ function AppRoutes() {
         <Route path="clientes" element={<Clientes />} />
         <Route path="operadoras" element={usuario?.perfil === 'ADMIN' ? <Operadoras /> : <Navigate to="/" replace />} />
         <Route path="propostas" element={<Propostas />} />
+        <Route path="creditos" element={<CreditosClientes />} />
         <Route path="propostas/:propostaId/orcamentos" element={<PropostaOrcamentosPage />} />
         <Route path="vendas" element={<Vendas />} />
         <Route path="contas-receber" element={usuario?.perfil === 'ADMIN' ? <ContasReceber /> : <Navigate to="/" replace />} />
         <Route path="contas-pagar" element={usuario?.perfil === 'ADMIN' ? <ContasPagar /> : <Navigate to="/" replace />} />
+        <Route path="brindes" element={usuario?.perfil === 'ADMIN' ? <Brindes /> : <Navigate to="/" replace />} />
         <Route path="centros-custo" element={usuario?.perfil === 'ADMIN' ? <CentrosCusto /> : <Navigate to="/" replace />} />
         <Route path="pos-venda" element={<PosVenda />} />
         <Route path="modelos-pos-venda" element={usuario?.perfil === 'ADMIN' ? <ModelosPosVenda /> : <Navigate to="/" replace />} />

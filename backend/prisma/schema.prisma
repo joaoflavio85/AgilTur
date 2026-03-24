@@ -43,6 +43,9 @@ model Cliente {
 
   vendas        Venda[]
   propostas     Proposta[]
+  vendasIndicadas Venda[] @relation("VendaClienteIndicador")
+  indicacoesFeitas IndicacaoCliente[] @relation("IndicadorCliente")
+  indicacoesRecebidas IndicacaoCliente[] @relation("IndicadoCliente")
 
   @@unique([empresaId, cpf])
   @@map("clientes")
@@ -128,6 +131,8 @@ model Venda {
   empresaId          Int?
   propostaId         Int?
   clienteId          Int
+  clienteIndicadorId Int?
+  vendaPorIndicacao  Boolean      @default(false)
   agenteId           Int
   operadoraId        Int?
   idReserva          String?      @db.NVarChar(20)
@@ -144,14 +149,41 @@ model Venda {
   dataViagemFim      DateTime?
 
   proposta           Proposta?    @relation(fields: [propostaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  cliente            Cliente      @relation(fields: [clienteId], references: [id])
+  cliente            Cliente      @relation(fields: [clienteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clienteIndicador   Cliente?     @relation("VendaClienteIndicador", fields: [clienteIndicadorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   agente             Usuario      @relation(fields: [agenteId], references: [id])
   operadora          Operadora?   @relation(fields: [operadoraId], references: [id])
   pagamentos         VendaPagamento[]
   contasReceber      ContaReceber[]
   posVendas          PosVenda[]
+  indicacao          IndicacaoCliente?
 
   @@map("vendas")
+}
+
+model IndicacaoCliente {
+  id                 Int       @id @default(autoincrement())
+  empresaId          Int?
+  clienteIndicadorId Int
+  clienteIndicadoId  Int
+  vendaId            Int       @unique
+  valorComissaoVenda Decimal   @default(0) @db.Decimal(10, 2)
+  bonificacaoGerada  Decimal   @default(0) @db.Decimal(10, 2)
+  percentualBonificacaoAplicado Decimal @default(5) @db.Decimal(5, 2)
+  statusBonificacao  String    @default("PENDENTE") @db.NVarChar(20)
+  dataPagamentoBonificacao DateTime?
+  observacoes        String?   @db.NVarChar(1000)
+  dataIndicacao      DateTime  @default(now())
+  dataCriacao        DateTime  @default(now())
+
+  clienteIndicador   Cliente   @relation("IndicadorCliente", fields: [clienteIndicadorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clienteIndicado    Cliente   @relation("IndicadoCliente", fields: [clienteIndicadoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  venda              Venda     @relation(fields: [vendaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([clienteIndicadorId])
+  @@index([clienteIndicadoId])
+  @@index([dataIndicacao])
+  @@map("indicacoes_clientes")
 }
 
 model ContaReceber {
@@ -237,6 +269,41 @@ model ConfiguracaoWhatsApp {
   @@map("configuracao_whatsapp")
 }
 
+model Brinde {
+  id            Int      @id @default(autoincrement())
+  empresaId     Int?
+  nome          String   @db.NVarChar(150)
+  estoque       Int      @default(0)
+  estoqueMinimo Int      @default(0)
+  custoMedio    Decimal  @default(0) @db.Decimal(10, 2)
+  dataCriacao   DateTime @default(now())
+
+  movimentacoes BrindeMovimentacao[]
+
+  @@map("brindes")
+}
+
+model BrindeMovimentacao {
+  id              Int      @id @default(autoincrement())
+  empresaId       Int?
+  brindeId        Int
+  tipo            String   @db.NVarChar(10)
+  quantidade      Int
+  custoUnitario   Decimal  @db.Decimal(10, 2)
+  valorTotal      Decimal  @db.Decimal(10, 2)
+  dataMovimentacao DateTime @default(now())
+  fornecedorNome  String?  @db.NVarChar(150)
+  clienteNome     String?  @db.NVarChar(150)
+  vendaId         Int?
+  despesaId       Int?
+  observacao      String?  @db.NVarChar(255)
+
+  brinde          Brinde   @relation(fields: [brindeId], references: [id])
+
+  @@index([brindeId, dataMovimentacao])
+  @@map("brinde_movimentacao")
+}
+
 model AuditoriaEvento {
   id          Int      @id @default(autoincrement())
   empresaId   Int?
@@ -268,6 +335,7 @@ model Empresa {
   asaasApiKey    String?  @db.NVarChar(255)
   asaasBaseUrl   String?  @db.NVarChar(255)
   asaasSandbox   Boolean  @default(true)
+  percentualBonificacaoIndicacao Decimal @default(5) @db.Decimal(5, 2)
   ativo          Boolean  @default(true)
   dataCriacao    DateTime @default(now())
   dataAtualizacao DateTime @updatedAt

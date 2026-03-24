@@ -26,6 +26,17 @@ export default function PropostaOrcamentosPage({ propostaId }) {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [empresaInfo, setEmpresaInfo] = useState(null);
   const [propostaInfo, setPropostaInfo] = useState(null);
+  const [whatsModal, setWhatsModal] = useState({
+    aberto: false,
+    orcamentoId: null,
+    clienteNome: "",
+    telefone: "",
+    mensagem: "",
+    enviando: false,
+    erro: "",
+  });
+
+  const somenteDigitos = (v) => String(v || "").replace(/\D/g, "");
 
   const normalizarOrcamento = (item) => ({
     id: item?.id ?? item?.Id,
@@ -48,7 +59,15 @@ export default function PropostaOrcamentosPage({ propostaId }) {
     valorParcelaCartao: item?.valorParcelaCartao ?? item?.ValorParcelaCartao ?? "",
     valorPix: item?.valorPix ?? item?.ValorPix ?? "",
     linkPropostaFornecedor: item?.linkPropostaFornecedor ?? item?.LinkPropostaFornecedor ?? "",
+    dataCriacao: item?.dataCriacao ?? item?.DataCriacao ?? "",
   });
+
+  const formatarDataHora = (value) => {
+    if (!value) return "-";
+    const data = new Date(value);
+    if (Number.isNaN(data.getTime())) return "-";
+    return data.toLocaleString("pt-BR");
+  };
 
   const getErroMensagem = (err, fallback) => {
     const data = err?.response?.data;
@@ -183,6 +202,80 @@ export default function PropostaOrcamentosPage({ propostaId }) {
     }
   };
 
+  const abrirWhatsAppOrcamento = (item) => {
+    const telefone = somenteDigitos(propostaInfo?.cliente?.telefone);
+    if (!telefone || telefone.length < 10) {
+      window.alert("Cliente sem telefone valido no cadastro.");
+      return;
+    }
+
+    const clienteNome = propostaInfo?.cliente?.nome || "cliente";
+    const periodo = item?.dataInicio && item?.dataFim
+      ? `${item.dataInicio} a ${item.dataFim}`
+      : "datas a confirmar";
+    const resumo = [
+      `Ola ${clienteNome}, tudo bem?`,
+      `Segue resumo da proposta V${item?.versao || 1}:`,
+      `- Titulo: ${item?.titulo || "Proposta sem titulo"}`,
+      `- Destino: ${item?.destino || "Nao informado"}`,
+      `- Periodo: ${periodo}`,
+      `- Pessoas: ${Number(item?.numeroPessoas || 0)}`,
+      `- Valor total: R$ ${Number(item?.valorTotal || 0).toFixed(2)}`,
+    ].join("\n");
+
+    setWhatsModal({
+      aberto: true,
+      orcamentoId: item?.id || null,
+      clienteNome,
+      telefone,
+      mensagem: resumo,
+      enviando: false,
+      erro: "",
+    });
+  };
+
+  const enviarWhatsAppOrcamento = async () => {
+    const telefone = somenteDigitos(whatsModal.telefone);
+    const mensagem = String(whatsModal.mensagem || "").trim();
+
+    if (!telefone || telefone.length < 10) {
+      setWhatsModal((prev) => ({ ...prev, erro: "Telefone invalido para envio." }));
+      return;
+    }
+
+    if (!mensagem) {
+      setWhatsModal((prev) => ({ ...prev, erro: "Digite a mensagem antes de enviar." }));
+      return;
+    }
+
+    setWhatsModal((prev) => ({ ...prev, enviando: true, erro: "" }));
+    try {
+      await api.post("/whatsapp/chatbot/enviar-mensagem", {
+        number: telefone,
+        mensagem,
+        propostaId: propostaIdFromRoute,
+        orcamentoId: whatsModal.orcamentoId,
+      });
+
+      setWhatsModal({
+        aberto: false,
+        orcamentoId: null,
+        clienteNome: "",
+        telefone: "",
+        mensagem: "",
+        enviando: false,
+        erro: "",
+      });
+      window.alert("Mensagem enviada com sucesso via ChatBot.");
+    } catch (err) {
+      setWhatsModal((prev) => ({
+        ...prev,
+        enviando: false,
+        erro: err?.response?.data?.error || "Falha ao enviar mensagem via ChatBot.",
+      }));
+    }
+  };
+
   return (
     <div className="orcamentos-shell">
       <header className="orcamentos-head">
@@ -220,10 +313,12 @@ export default function PropostaOrcamentosPage({ propostaId }) {
                           {item.linkPropostaFornecedor ? <span className="badge badge-success">Link fornecedor</span> : null}
                         </div>
                         <small className="orc-item-resumo">{resumoParcelas} | {resumoPix}</small>
+                        <small className="orc-item-resumo">Criado em: {formatarDataHora(item.dataCriacao)}</small>
                       </div>
                       <small>R$ {Number(item.valorTotal || 0).toFixed(2)}</small>
                       </button>
                       <div className="orc-item-actions">
+                        <button className="btn btn-success btn-sm" type="button" onClick={() => abrirWhatsAppOrcamento(item)}><span className="action-icon">💬</span>WhatsApp</button>
                         <button className="btn btn-outline btn-sm" type="button" onClick={() => handleEditar(item)}><span className="action-icon">✎</span>Editar</button>
                         <button className="btn btn-danger btn-sm" type="button" onClick={() => setConfirmDelete(item)}><span className="action-icon">×</span>Excluir</button>
                       </div>
@@ -273,6 +368,51 @@ export default function PropostaOrcamentosPage({ propostaId }) {
             <div className="modal-footer">
               <button className="btn btn-outline" type="button" onClick={() => setConfirmDelete(null)} disabled={loading}>Cancelar</button>
               <button className="btn btn-danger" type="button" onClick={() => handleExcluir(confirmDelete.id)} disabled={loading}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {whatsModal.aberto && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setWhatsModal({ aberto: false, orcamentoId: null, clienteNome: "", telefone: "", mensagem: "", enviando: false, erro: "" })}>
+          <div className="modal" style={{ maxWidth: 640 }}>
+            <div className="modal-header">
+              <h3>Enviar WhatsApp (ChatBot)</h3>
+              <button className="btn-icon" onClick={() => setWhatsModal({ aberto: false, orcamentoId: null, clienteNome: "", telefone: "", mensagem: "", enviando: false, erro: "" })}>x</button>
+            </div>
+
+            {whatsModal.erro && <div className="alert alert-error">{whatsModal.erro}</div>}
+
+            <div className="form-grid">
+              <div className="form-group form-full">
+                <label>Cliente</label>
+                <input className="form-control" disabled value={whatsModal.clienteNome} />
+              </div>
+              <div className="form-group form-full">
+                <label>Telefone</label>
+                <input
+                  className="form-control"
+                  value={whatsModal.telefone}
+                  onChange={(e) => setWhatsModal((prev) => ({ ...prev, telefone: e.target.value }))}
+                  placeholder="5511999999999"
+                />
+              </div>
+              <div className="form-group form-full">
+                <label>Mensagem *</label>
+                <textarea
+                  className="form-control"
+                  rows={6}
+                  value={whatsModal.mensagem}
+                  onChange={(e) => setWhatsModal((prev) => ({ ...prev, mensagem: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setWhatsModal({ aberto: false, orcamentoId: null, clienteNome: "", telefone: "", mensagem: "", enviando: false, erro: "" })}>Cancelar</button>
+              <button className="btn btn-success" disabled={whatsModal.enviando} onClick={enviarWhatsAppOrcamento}>
+                {whatsModal.enviando ? "Enviando..." : "Enviar agora via ChatBot"}
+              </button>
             </div>
           </div>
         </div>

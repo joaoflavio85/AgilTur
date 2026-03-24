@@ -10,6 +10,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<OrcamentoImagem> OrcamentoImagens => Set<OrcamentoImagem>();
     public DbSet<HistoricoOrcamento> HistoricoOrcamentos => Set<HistoricoOrcamento>();
     public DbSet<OrcamentoVisualizacao> OrcamentoVisualizacoes => Set<OrcamentoVisualizacao>();
+    public DbSet<CreditoCliente> CreditosCliente => Set<CreditoCliente>();
+    public DbSet<CreditoMovimentacao> CreditoMovimentacoes => Set<CreditoMovimentacao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +90,41 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasOne(x => x.Orcamento)
                 .WithMany(x => x.Visualizacoes)
                 .HasForeignKey(x => x.OrcamentoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CreditoCliente>(entity =>
+        {
+            entity.ToTable("CreditosCliente");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.ClienteId);
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.DataValidade);
+
+            entity.Property(x => x.ClienteNome).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ClienteTelefone).HasMaxLength(25);
+            entity.Property(x => x.ValorTotal).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.ValorUtilizado).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Status).HasMaxLength(30).HasDefaultValue(CreditoStatus.Ativo).IsRequired();
+            entity.Property(x => x.Motivo).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Observacoes).HasMaxLength(1000);
+        });
+
+        modelBuilder.Entity<CreditoMovimentacao>(entity =>
+        {
+            entity.ToTable("CreditoMovimentacao");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.CreditoId);
+            entity.HasIndex(x => x.DataMovimentacao);
+
+            entity.Property(x => x.Tipo).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Valor).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Observacao).HasMaxLength(1000);
+            entity.Property(x => x.VendaId).HasMaxLength(50);
+
+            entity.HasOne(x => x.Credito)
+                .WithMany(x => x.Movimentacoes)
+                .HasForeignKey(x => x.CreditoId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

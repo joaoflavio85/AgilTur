@@ -10,6 +10,7 @@ class VendaRepository {
     agenteId,
     operadoraId,
     status,
+    vendaPorIndicacao,
     tipoServico,
     idReserva,
     dataVendaInicio,
@@ -26,6 +27,7 @@ class VendaRepository {
       ...(agenteId && { agenteId: Number(agenteId) }),
       ...(operadoraId && { operadoraId: Number(operadoraId) }),
       ...(status && { status }),
+      ...(typeof vendaPorIndicacao === 'boolean' && { vendaPorIndicacao }),
       ...(tipoServico && { tipoServico }),
       ...(idReserva && { idReserva: { contains: idReserva.trim(), mode: 'insensitive' } }),
       ...(Object.keys(dataVenda).length > 0 && { dataVenda }),
@@ -39,9 +41,11 @@ class VendaRepository {
       where,
       include: {
         cliente: { select: { id: true, nome: true, cpf: true } },
+        clienteIndicador: { select: { id: true, nome: true, cpf: true } },
         agente: { select: { id: true, nome: true } },
         operadora: { select: { id: true, nome: true, cnpj: true } },
         pagamentos: true,
+        indicacao: true,
       },
       orderBy: { dataVenda: 'desc' },
     });
@@ -57,9 +61,11 @@ class VendaRepository {
         where,
         include: {
           cliente: { select: { id: true, nome: true, cpf: true } },
+          clienteIndicador: { select: { id: true, nome: true, cpf: true } },
           agente: { select: { id: true, nome: true } },
           operadora: { select: { id: true, nome: true, cnpj: true } },
           pagamentos: true,
+          indicacao: true,
         },
         orderBy: { dataVenda: 'desc' },
         skip,
@@ -89,11 +95,13 @@ class VendaRepository {
       where: { id },
       include: {
         cliente: true,
+        clienteIndicador: true,
         agente: { select: { id: true, nome: true, email: true } },
         operadora: true,
         pagamentos: true,
         contasReceber: true,
         posVendas: true,
+        indicacao: true,
       },
     });
   }
@@ -112,9 +120,11 @@ class VendaRepository {
       },
       include: {
         cliente: { select: { id: true, nome: true } },
+        clienteIndicador: { select: { id: true, nome: true } },
         agente: { select: { id: true, nome: true } },
         operadora: { select: { id: true, nome: true } },
         pagamentos: true,
+        indicacao: true,
       },
     });
   }
@@ -135,9 +145,11 @@ class VendaRepository {
       },
       include: {
         cliente: { select: { id: true, nome: true } },
+        clienteIndicador: { select: { id: true, nome: true } },
         agente: { select: { id: true, nome: true } },
         operadora: { select: { id: true, nome: true } },
         pagamentos: true,
+        indicacao: true,
       },
     });
   }

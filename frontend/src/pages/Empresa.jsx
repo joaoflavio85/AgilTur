@@ -11,6 +11,7 @@ const empty = {
   asaasApiKey: '',
   asaasBaseUrl: 'https://sandbox.asaas.com/api/v3',
   asaasSandbox: true,
+  percentualBonificacaoIndicacao: 5,
 };
 
 const ASAAS_SANDBOX_URL = 'https://sandbox.asaas.com/api/v3';
@@ -43,6 +44,7 @@ export default function Empresa() {
           asaasApiKey: '',
           asaasBaseUrl: data.asaasBaseUrl || 'https://sandbox.asaas.com/api/v3',
           asaasSandbox: data.asaasSandbox ?? true,
+          percentualBonificacaoIndicacao: Number(data.percentualBonificacaoIndicacao ?? 5),
         });
         setHasAsaasApiKey(Boolean(data.hasAsaasApiKey));
         setLogoUrl(data.logoUrl || '');
@@ -193,6 +195,20 @@ export default function Empresa() {
           <div className="form-group form-full" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input id="asaasSandbox" type="checkbox" checked={form.asaasSandbox} onChange={f('asaasSandbox')} />
             <label htmlFor="asaasSandbox" style={{ margin: 0 }}>Modo Sandbox Asaas</label>
+          </div>
+
+          <div className="form-group">
+            <label>Percentual Bonificacao por Indicacao (%)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              className="form-control"
+              value={form.percentualBonificacaoIndicacao}
+              onChange={f('percentualBonificacaoIndicacao')}
+            />
+            <small style={{ color: '#666' }}>Usado para calcular bonificacao automatica nas vendas por indicacao.</small>
           </div>
         </div>
 

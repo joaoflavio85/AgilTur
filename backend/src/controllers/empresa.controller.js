@@ -17,6 +17,7 @@ const empresaSchema = z.object({
   asaasApiKey: z.preprocess(emptyToNull, z.string().optional().nullable()),
   asaasBaseUrl: z.preprocess(emptyToNull, z.string().url().optional().nullable()),
   asaasSandbox: z.boolean().optional(),
+  percentualBonificacaoIndicacao: z.number().or(z.string().transform(Number)).optional(),
 });
 
 class EmpresaController {

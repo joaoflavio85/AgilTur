@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { obterDashboardCreditos } from '../services/creditosApi';
 import './Dashboard.css';
 
 function StatCard({ icon, label, value, sub, color }) {
@@ -69,6 +70,7 @@ function daysUntil(value) {
 export default function Dashboard() {
   const { usuario } = useAuth();
   const [dados, setDados] = useState(null);
+  const [creditosDashboard, setCreditosDashboard] = useState(null);
   const [dadosAgente, setDadosAgente] = useState({ propostas: [], funil: null, viagensHojeTotal: 0, posVendas: [] });
   const [loading, setLoading] = useState(true);
   const [mesReferencia, setMesReferencia] = useState(() => {
@@ -85,24 +87,30 @@ export default function Dashboard() {
       setLoading(true);
       try {
         if (usuario?.perfil === 'ADMIN') {
-          const rel = await api.get('/relatorios/dashboard', { params: { mesReferencia } });
+          const [rel, creditos] = await Promise.all([
+            api.get('/relatorios/dashboard', { params: { mesReferencia } }),
+            obterDashboardCreditos(),
+          ]);
           setDados(rel.data);
+          setCreditosDashboard(creditos || null);
           setDadosAgente({ propostas: [], funil: null, viagensHojeTotal: 0, posVendas: [] });
           return;
         }
 
-        const [rel, propostasResp, funilResp, agendaResp, posVendaResp] = await Promise.all([
+        const [rel, propostasResp, funilResp, agendaResp, posVendaResp, creditos] = await Promise.all([
           api.get('/relatorios/dashboard'),
           api.get('/propostas', { params: { status: 'ABERTA', page: 1, pageSize: 200 } }),
           api.get('/propostas/funil'),
           api.get('/agenda'),
           api.get('/pos-venda', { params: { status: 'ABERTO' } }),
+          obterDashboardCreditos(),
         ]);
 
         const propostasData = propostasResp?.data;
         const propostas = Array.isArray(propostasData) ? propostasData : (propostasData?.items || []);
 
         setDados(rel.data);
+        setCreditosDashboard(creditos || null);
         setDadosAgente({
           propostas,
           funil: funilResp?.data || null,
@@ -111,6 +119,7 @@ export default function Dashboard() {
         });
       } catch {
         setDados(null);
+        setCreditosDashboard(null);
         setDadosAgente({ propostas: [], funil: null, viagensHojeTotal: 0, posVendas: [] });
       } finally {
         setLoading(false);
@@ -191,6 +200,27 @@ export default function Dashboard() {
             label="Clientes em Viagem"
             value={dados?.clientesEmViagem ?? 0}
             sub="viajando hoje"
+            color="purple"
+          />
+          <StatCard
+            icon="🎟️"
+            label="Creditos Ativos"
+            value={creditosDashboard?.totalAtivos ?? 0}
+            sub={formatCurrency(creditosDashboard?.valorAtivo || 0)}
+            color="green"
+          />
+          <StatCard
+            icon="⚠️"
+            label="Creditos a Vencer (7d)"
+            value={creditosDashboard?.totalAVencer7Dias ?? 0}
+            sub="monitoramento"
+            color="orange"
+          />
+          <StatCard
+            icon="🕘"
+            label="Creditos Expirados"
+            value={creditosDashboard?.totalExpirados ?? 0}
+            sub="historico"
             color="purple"
           />
         </div>

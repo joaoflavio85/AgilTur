@@ -93,6 +93,16 @@ class EmpresaService {
       ativo: true,
     };
 
+    if (data.percentualBonificacaoIndicacao !== undefined) {
+      const percentual = Number(data.percentualBonificacaoIndicacao);
+      if (!Number.isFinite(percentual) || percentual < 0 || percentual > 100) {
+        const err = new Error('Percentual de bonificacao deve estar entre 0 e 100.');
+        err.statusCode = 400;
+        throw err;
+      }
+      payload.percentualBonificacaoIndicacao = percentual;
+    }
+
     if (Object.prototype.hasOwnProperty.call(data, 'subdominio')) {
       payload.subdominio = subdominioNormalizado;
     }
@@ -116,6 +126,7 @@ class EmpresaService {
         cnpj: salvo.cnpj,
         subdominio: salvo.subdominio,
         asaasBaseUrl: salvo.asaasBaseUrl,
+        percentualBonificacaoIndicacao: salvo.percentualBonificacaoIndicacao,
       },
     });
 
