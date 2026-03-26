@@ -1,1 +1,38 @@
-﻿[]
+[
+  {
+    "id": "ce70d118-e22e-4bf2-b308-9dd2b4b46def",
+    "razaoSocial": "CVC VIAGENS",
+    "nomeFantasia": "CVC",
+    "responsavel": "JOAO",
+    "email": "joaoflavio85@gmail.com",
+    "telefone": "3532673916",
+    "subdominio": "cvc",
+    "plano": "START",
+    "observacoes": "",
+    "urlSugerida": "https://cvc.agencia.local",
+    "criadoEm": "2026-03-24T18:29:05.677Z",
+    "backendSync": {
+      "status": "success",
+      "tenantId": 4,
+      "message": "Tenant criado no backend principal."
+    }
+  },
+  {
+    "id": "193b87a8-6e50-4792-8180-79b4e6ed768b",
+    "razaoSocial": "Nova Agencia Comercial LTDA",
+    "nomeFantasia": "Nova Agencia Comercial",
+    "responsavel": "Joao Pereira",
+    "email": "joao@novaagencia.com",
+    "telefone": "11977776666",
+    "subdominio": "nova-agencia-comercial",
+    "plano": "START",
+    "observacoes": "Lead de campanha landing",
+    "urlSugerida": "https://nova-agencia-comercial.agencia.local",
+    "criadoEm": "2026-03-24T18:20:26.666Z",
+    "backendSync": {
+      "status": "success",
+      "tenantId": 3,
+      "message": "Tenant criado no backend principal."
+    }
+  }
+]

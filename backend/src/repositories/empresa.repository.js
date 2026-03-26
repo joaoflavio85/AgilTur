@@ -14,6 +14,12 @@ class EmpresaRepository {
     });
   }
 
+  async findBySubdominioAnyStatus(subdominio) {
+    return prisma.empresa.findUnique({
+      where: { subdominio },
+    });
+  }
+
   async findFirst() {
     return prisma.empresa.findFirst({
       where: { ativo: true },
@@ -38,6 +44,19 @@ class EmpresaRepository {
     return prisma.empresa.update({
       where: { id: Number(id) },
       data,
+    });
+  }
+
+  async createTenant(data) {
+    return prisma.empresa.create({
+      data: {
+        razaoSocial: data.razaoSocial,
+        nomeFantasia: data.nomeFantasia || null,
+        email: data.email || null,
+        telefone: data.telefone || null,
+        subdominio: data.subdominio,
+        ativo: true,
+      },
     });
   }
 }

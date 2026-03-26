@@ -17,6 +17,9 @@ type EmpresaPayload = {
 type EmpresaResponse = {
   id: string;
   mensagem: string;
+  links?: {
+    propostaPdf?: string;
+  };
   empresa: {
     razaoSocial: string;
     nomeFantasia: string;
@@ -24,6 +27,11 @@ type EmpresaResponse = {
     plano: string;
     urlSugerida: string;
     criadoEm: string;
+    backendSync?: {
+      status: "success" | "failed" | "not-configured";
+      tenantId?: number;
+      message?: string;
+    };
   };
 };
 
@@ -222,6 +230,9 @@ export default function NovaEmpresaPage() {
             <button className="btn btn-primary" type="submit" disabled={saving}>
               {saving ? "Salvando..." : "Criar empresa"}
             </button>
+            <Link className="btn btn-secondary" href="/empresas">
+              Ver empresas cadastradas
+            </Link>
             <Link className="btn btn-secondary" href="/">
               Voltar para landing
             </Link>
@@ -239,6 +250,16 @@ export default function NovaEmpresaPage() {
             <p>
               URL sugerida: <code>{success.empresa.urlSugerida}</code>
             </p>
+            <p>
+              Backend principal: {success.empresa.backendSync?.message || "Sem mensagem de integracao."}
+            </p>
+            {success.links?.propostaPdf ? (
+              <p>
+                <a href={success.links.propostaPdf} target="_blank" rel="noreferrer">
+                  Baixar proposta comercial em PDF
+                </a>
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>

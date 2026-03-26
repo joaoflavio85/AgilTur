@@ -19,6 +19,7 @@ const relatorioRoutes = require('./routes/relatorio.routes');
 const auditoriaRoutes = require('./routes/auditoria.routes');
 const empresaRoutes = require('./routes/empresa.routes');
 const brindeRoutes = require('./routes/brinde.routes');
+const saasOnboardingRoutes = require('./routes/saasOnboarding.routes');
 
 const errorMiddleware = require('./middlewares/error.middleware');
 const tenantMiddleware = require('./middlewares/tenant.middleware');
@@ -54,6 +55,7 @@ app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
 app.use('/api/empresa', empresaRoutes);
 app.use('/api/brindes', brindeRoutes);
+app.use('/api/public/saas', saasOnboardingRoutes);
 
 // Rota de health check
 app.get('/api/health', (req, res) => {

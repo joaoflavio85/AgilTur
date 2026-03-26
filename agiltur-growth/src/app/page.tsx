@@ -21,6 +21,9 @@ export default function Home() {
               <Link className="btn btn-primary" href="/nova-empresa">
                 Criar nova empresa SaaS
               </Link>
+              <Link className="btn btn-secondary" href="/empresas">
+                Painel de empresas
+              </Link>
               <a className="btn btn-secondary" href="#planos">
                 Ver planos
               </a>

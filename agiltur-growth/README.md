@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## AGILTUR Growth
 
-## Getting Started
+Landing page comercial + onboarding SaaS para captacao de novas empresas do AGILTUR.
 
-First, run the development server:
+Funcionalidades principais:
+- Landing page de venda do produto.
+- Cadastro de nova empresa SaaS em `/nova-empresa`.
+- Painel de empresas com filtros em `/empresas`.
+- Geracao de proposta comercial em PDF por empresa.
+- Integracao opcional com backend principal para criar tenant real.
+
+## Como rodar
+
+1. Instale dependencias:
+
+```bash
+npm install
+```
+
+2. Crie seu `.env.local` baseado em `.env.example`.
+
+3. Rode em desenvolvimento:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Acesse:
+- `http://localhost:3000` (landing)
+- `http://localhost:3000/nova-empresa` (onboarding)
+- `http://localhost:3000/empresas` (painel)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Integracao com backend principal
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Configure no `.env.local`:
 
-## Learn More
+```env
+NEXT_PUBLIC_BASE_DOMAIN=agencia.local
+AGILTUR_CORE_API_URL=http://localhost:3001/api/public/saas/tenants
+AGILTUR_CORE_API_KEY=sua-chave
+```
 
-To learn more about Next.js, take a look at the following resources:
+- Quando configurado, cada novo cadastro tenta criar o tenant real no backend principal.
+- O status da sincronizacao aparece na resposta do cadastro e no painel `/empresas`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Endpoint interno
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `GET /api/empresas` lista empresas (aceita `q`, `plano`, `sync`)
+- `POST /api/empresas` cria empresa e tenta sincronizar com backend
+- `GET /api/empresas/:id/proposta-pdf` gera PDF da proposta comercial
 
-## Deploy on Vercel
+## Build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

@@ -1,80 +1,103 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import {
+  type BackendSync,
+  type EmpresaRecord,
+  type Plano,
+  loadEmpresas,
+  normalizeSubdomain,
+  saveEmpresas,
+  subdomainRegex,
+  toStringSafe,
+} from "@/lib/empresas-store";
 
-type Plano = "START" | "PRO" | "ENTERPRISE";
+async function syncWithCoreBackend(record: EmpresaRecord): Promise<BackendSync> {
+  const apiUrl = String(process.env.AGILTUR_CORE_API_URL || "").trim();
+  const apiKey = String(process.env.AGILTUR_CORE_API_KEY || "").trim();
 
-type EmpresaRecord = {
-  id: string;
-  razaoSocial: string;
-  nomeFantasia: string;
-  responsavel: string;
-  email: string;
-  telefone: string;
-  subdominio: string;
-  plano: Plano;
-  observacoes: string;
-  urlSugerida: string;
-  criadoEm: string;
-};
+  if (!apiUrl || !apiKey) {
+    return {
+      status: "not-configured",
+      message: "Integracao com backend principal nao configurada no landing app.",
+    };
+  }
 
-const dataDir = path.join(process.cwd(), "data");
-const dataFile = path.join(dataDir, "empresas.json");
-
-const subdomainRegex = /^[a-z0-9-]{3,40}$/;
-
-const toString = (value: unknown) => String(value || "").trim();
-
-const normalizeSubdomain = (value: string) =>
-  String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-|-$/g, "");
-
-async function ensureDataFile() {
-  await mkdir(dataDir, { recursive: true });
   try {
-    await readFile(dataFile, "utf-8");
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-saas-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        razaoSocial: record.razaoSocial,
+        nomeFantasia: record.nomeFantasia,
+        email: record.email,
+        telefone: record.telefone,
+        subdominio: record.subdominio,
+        plano: record.plano,
+        observacoes: record.observacoes,
+      }),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      tenant?: { id?: number };
+    };
+
+    if (!response.ok) {
+      return {
+        status: "failed",
+        message: payload.error || "Falha ao sincronizar com backend principal.",
+      };
+    }
+
+    return {
+      status: "success",
+      tenantId: payload.tenant?.id,
+      message: "Tenant criado no backend principal.",
+    };
   } catch {
-    await writeFile(dataFile, "[]", "utf-8");
+    return {
+      status: "failed",
+      message: "Erro de conexao com backend principal durante sincronizacao.",
+    };
   }
 }
 
-async function loadEmpresas(): Promise<EmpresaRecord[]> {
-  await ensureDataFile();
-  const content = await readFile(dataFile, "utf-8");
-  try {
-    const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? (parsed as EmpresaRecord[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-async function saveEmpresas(empresas: EmpresaRecord[]) {
-  await writeFile(dataFile, JSON.stringify(empresas, null, 2), "utf-8");
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   const empresas = await loadEmpresas();
-  return NextResponse.json({ total: empresas.length, empresas });
+
+  const { searchParams } = new URL(request.url);
+  const q = toStringSafe(searchParams.get("q") || "").toLowerCase();
+  const plano = toStringSafe(searchParams.get("plano") || "").toUpperCase();
+  const sync = toStringSafe(searchParams.get("sync") || "").toLowerCase();
+
+  const filtradas = empresas.filter((item) => {
+    if (plano && item.plano !== plano) return false;
+    if (sync && item.backendSync?.status !== sync) return false;
+
+    if (!q) return true;
+    const bag = [item.razaoSocial, item.nomeFantasia, item.email, item.subdominio]
+      .join(" ")
+      .toLowerCase();
+    return bag.includes(q);
+  });
+
+  return NextResponse.json({ total: filtradas.length, empresas: filtradas });
 }
 
 export async function POST(request: Request) {
   const body = await request.json();
 
-  const razaoSocial = toString(body?.razaoSocial);
-  const nomeFantasia = toString(body?.nomeFantasia);
-  const responsavel = toString(body?.responsavel);
-  const email = toString(body?.email).toLowerCase();
-  const telefone = toString(body?.telefone);
-  const subdominio = normalizeSubdomain(toString(body?.subdominio));
-  const plano = toString(body?.plano).toUpperCase() as Plano;
-  const observacoes = toString(body?.observacoes);
+  const razaoSocial = toStringSafe(body?.razaoSocial);
+  const nomeFantasia = toStringSafe(body?.nomeFantasia);
+  const responsavel = toStringSafe(body?.responsavel);
+  const email = toStringSafe(body?.email).toLowerCase();
+  const telefone = toStringSafe(body?.telefone);
+  const subdominio = normalizeSubdomain(toStringSafe(body?.subdominio));
+  const plano = toStringSafe(body?.plano).toUpperCase() as Plano;
+  const observacoes = toStringSafe(body?.observacoes);
 
   if (!razaoSocial || !nomeFantasia || !responsavel || !email || !telefone || !subdominio) {
     return NextResponse.json({ error: "Preencha todos os campos obrigatorios." }, { status: 400 });
@@ -112,7 +135,10 @@ export async function POST(request: Request) {
     observacoes,
     urlSugerida: `https://${subdominio}.${dominioBase}`,
     criadoEm: new Date().toISOString(),
+    backendSync: { status: "not-configured" },
   };
+
+  record.backendSync = await syncWithCoreBackend(record);
 
   empresas.unshift(record);
   await saveEmpresas(empresas);
@@ -128,6 +154,10 @@ export async function POST(request: Request) {
         plano: record.plano,
         urlSugerida: record.urlSugerida,
         criadoEm: record.criadoEm,
+        backendSync: record.backendSync,
+      },
+      links: {
+        propostaPdf: `/api/empresas/${record.id}/proposta-pdf`,
       },
     },
     { status: 201 },

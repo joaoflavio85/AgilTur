@@ -346,6 +346,61 @@ a {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
+.table-grid {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.table-grid th,
+.table-grid td {
+  text-align: left;
+  border-bottom: 1px solid #ece9e7;
+  padding: 12px 10px;
+  vertical-align: top;
+}
+
+.table-grid th {
+  color: #334155;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.status-success {
+  color: #065f46;
+  background: #ccfbf1;
+}
+
+.status-failed {
+  color: #9f1239;
+  background: #ffe4e6;
+}
+
+.status-not-configured {
+  color: #6b7280;
+  background: #f1f5f9;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.row-actions .btn {
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
 @keyframes riseIn {
   from {
     transform: translateY(8px);
