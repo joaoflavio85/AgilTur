@@ -31,6 +31,14 @@ class AuthService {
       throw err;
     }
 
+    const tenantIdResolvido = Number(tenant?.id || usuario?.empresaId || 0) || null;
+    const tenantResolvido = tenantIdResolvido
+      ? {
+          id: tenantIdResolvido,
+          subdominio: tenant?.subdominio || null,
+        }
+      : null;
+
     // Gera o token JWT
     const token = jwt.sign(
       {
@@ -38,8 +46,9 @@ class AuthService {
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil,
-        tenantId: tenant?.id || null,
-        tenantSubdominio: tenant?.subdominio || null,
+        empresaId: usuario?.empresaId || null,
+        tenantId: tenantIdResolvido,
+        tenantSubdominio: tenantResolvido?.subdominio || null,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
@@ -53,7 +62,7 @@ class AuthService {
         email: usuario.email,
         perfil: usuario.perfil,
       },
-      tenant,
+      tenant: tenantResolvido,
     };
   }
 }

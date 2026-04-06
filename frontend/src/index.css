@@ -382,3 +382,110 @@ tbody tr:hover { background: var(--surface2); }
     grid-template-columns: 1fr;
   }
 }
+
+.venda-modal {
+  max-width: 1040px;
+  max-height: 95vh;
+  overflow-y: hidden;
+  padding: 22px;
+}
+
+.venda-modal-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.venda-modal-stepper {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.venda-step {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.venda-step.active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.venda-step:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.venda-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.venda-modal-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--primary-dark);
+  margin-top: 2px;
+}
+
+.venda-modal .form-group {
+  gap: 4px;
+}
+
+.venda-modal .form-control {
+  padding: 8px 10px;
+}
+
+.venda-modal textarea.form-control {
+  min-height: 52px;
+}
+
+.venda-pagamento-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1100px) and (min-width: 769px) {
+  .venda-modal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .venda-modal {
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .venda-modal-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .venda-modal-stepper {
+    flex-direction: column;
+  }
+
+  .venda-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .venda-pagamento-row {
+    grid-template-columns: 1fr;
+  }
+}

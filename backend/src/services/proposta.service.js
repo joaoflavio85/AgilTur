@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const propostaRepository = require('../repositories/proposta.repository');
 const auditoriaService = require('./auditoria.service');
+const { getTenantId } = require('../config/tenant-context');
 
 const MOTIVOS_PERDA_PADRAO = [
   'Cliente Não Respondeu',
@@ -339,6 +340,8 @@ class PropostaService {
     }
 
     return prisma.$transaction(async (tx) => {
+      const tenantId = getTenantId();
+
       const vendaExistente = await tx.venda.findFirst({ where: { propostaId: proposta.id } });
       if (vendaExistente) {
         const err = new Error('Esta proposta ja possui venda vinculada.');
@@ -348,6 +351,7 @@ class PropostaService {
 
       const venda = await tx.venda.create({
         data: {
+          ...(tenantId ? { empresaId: tenantId } : {}),
           propostaId: proposta.id,
           clienteId: proposta.clienteId,
           agenteId: proposta.agenteId,

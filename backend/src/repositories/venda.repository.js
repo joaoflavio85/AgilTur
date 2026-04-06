@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { getTenantId } = require('../config/tenant-context');
 
 /**
  * Repositório de Vendas
@@ -108,13 +109,17 @@ class VendaRepository {
 
   async create(data) {
     const { pagamentos, ...dadosVenda } = data;
+    const tenantId = getTenantId();
 
     return prisma.venda.create({
       data: {
         ...dadosVenda,
         ...(Array.isArray(pagamentos) && {
           pagamentos: {
-            create: pagamentos,
+            create: pagamentos.map((pagamento) => ({
+              ...pagamento,
+              ...(tenantId ? { empresaId: tenantId } : {}),
+            })),
           },
         }),
       },
@@ -131,6 +136,7 @@ class VendaRepository {
 
   async update(id, data) {
     const { pagamentos, ...dadosVenda } = data;
+    const tenantId = getTenantId();
 
     return prisma.venda.update({
       where: { id },
@@ -139,7 +145,10 @@ class VendaRepository {
         ...(Array.isArray(pagamentos) && {
           pagamentos: {
             deleteMany: {},
-            create: pagamentos,
+            create: pagamentos.map((pagamento) => ({
+              ...pagamento,
+              ...(tenantId ? { empresaId: tenantId } : {}),
+            })),
           },
         }),
       },

@@ -2,6 +2,7 @@ const prisma = require('../config/database');
 const brindeRepository = require('../repositories/brinde.repository');
 const centroCustoRepository = require('../repositories/centroCusto.repository');
 const auditoriaService = require('./auditoria.service');
+const { getTenantId } = require('../config/tenant-context');
 
 const round2 = (v) => Math.round(Number(v || 0) * 100) / 100;
 
@@ -117,6 +118,8 @@ class BrindeService {
     await this.validarDespesaId(despesaId);
 
     return prisma.$transaction(async (tx) => {
+      const tenantId = getTenantId();
+
       const brinde = await tx.brinde.findUnique({ where: { id: brindeId } });
       if (!brinde) {
         const err = new Error('Brinde nao encontrado.');
@@ -134,6 +137,7 @@ class BrindeService {
 
       const movimentacao = await tx.brindeMovimentacao.create({
         data: {
+          ...(tenantId ? { empresaId: tenantId } : {}),
           brindeId,
           tipo: 'ENTRADA',
           quantidade,
@@ -158,6 +162,7 @@ class BrindeService {
 
       await tx.contaPagar.create({
         data: {
+          ...(tenantId ? { empresaId: tenantId } : {}),
           centroCustoId: despesaId,
           descricao: `Compra de brindes - ${brinde.nome}`,
           fornecedor: fornecedorNome,
@@ -213,6 +218,8 @@ class BrindeService {
     }
 
     return prisma.$transaction(async (tx) => {
+      const tenantId = getTenantId();
+
       const brinde = await tx.brinde.findUnique({ where: { id: brindeId } });
       if (!brinde) {
         const err = new Error('Brinde nao encontrado.');
@@ -233,6 +240,7 @@ class BrindeService {
 
       const movimentacao = await tx.brindeMovimentacao.create({
         data: {
+          ...(tenantId ? { empresaId: tenantId } : {}),
           brindeId,
           tipo: 'SAIDA',
           quantidade,

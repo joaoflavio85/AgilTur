@@ -130,6 +130,7 @@ export default function Vendas() {
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [etapaModalVenda, setEtapaModalVenda] = useState(1);
   const [filtroStatus, setFiltroStatus] = useState('ABERTA');
   const [filtroIndicacao, setFiltroIndicacao] = useState('');
   const [filtroClienteNome, setFiltroClienteNome] = useState('');
@@ -235,6 +236,7 @@ export default function Vendas() {
     setAnexoAtual(null);
     setEditId(null);
     setError('');
+    setEtapaModalVenda(1);
     setModal(true);
   };
   const abrirEditar = (v) => {
@@ -261,7 +263,7 @@ export default function Vendas() {
     });
     setAnexoPdfFile(null);
     setAnexoAtual(v.anexoPdfPath ? { nome: v.anexoPdfNome || 'anexo.pdf', path: v.anexoPdfPath } : null);
-    setEditId(v.id); setError(''); setModal(true);
+    setEditId(v.id); setError(''); setEtapaModalVenda(1); setModal(true);
   };
 
   const carregarModeloCadastro = async (venda, responsavelPadrao) => {
@@ -426,6 +428,7 @@ export default function Vendas() {
       }
 
       setModal(false);
+      setEtapaModalVenda(1);
       setAnexoPdfFile(null);
       await carregarVendas();
 
@@ -469,6 +472,14 @@ export default function Vendas() {
   const pagamentosInvalidos = pagamentosObrigatorios && form.pagamentos.some((p) => (
     !p.formaPagamento || !p.dataVencimento || !p.valor || Number(p.valor) <= 0
   ));
+  const bloqueioProximaEtapa =
+    !form.clienteId ||
+    !form.operadoraId ||
+    !form.idReserva ||
+    form.idReserva.trim().length > 20 ||
+    !form.descricao ||
+    (form.vendaPorIndicacao && !form.clienteIndicadorId) ||
+    (form.vendaPorIndicacao && Number(form.clienteIndicadorId) === Number(form.clienteId));
   const totalComissaoFiltrada = Number.isFinite(Number(pagination.totalComissao))
     ? Number(pagination.totalComissao)
     : vendas.reduce((acc, venda) => acc + (Number(venda.valorComissao) || 0), 0);
@@ -718,192 +729,232 @@ export default function Vendas() {
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
-          <div className="modal" style={{maxWidth:700}}>
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && (setModal(false), setEtapaModalVenda(1))}>
+          <div className="modal venda-modal">
             <div className="modal-header">
               <h3>{editId ? 'Editar Venda' : 'Nova Venda'}</h3>
-              <button className="btn-icon" onClick={() => setModal(false)}>✕</button>
+              <button className="btn-icon" onClick={() => { setModal(false); setEtapaModalVenda(1); }}>✕</button>
             </div>
             {error && <div className="alert alert-error">{error}</div>}
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Cliente *</label>
-                <select className="form-control" value={form.clienteId} onChange={f('clienteId')}>
-                  <option value="">Selecione...</option>
-                  {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Operadora *</label>
-                <select className="form-control" value={form.operadoraId} onChange={f('operadoraId')}>
-                  <option value="">Selecione...</option>
-                  {operadoras.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Venda por indicação?</label>
-                <select
-                  className="form-control"
-                  value={form.vendaPorIndicacao ? 'SIM' : 'NAO'}
-                  onChange={(e) => {
-                    const ativo = e.target.value === 'SIM';
-                    setForm((prev) => ({
-                      ...prev,
-                      vendaPorIndicacao: ativo,
-                      ...(ativo ? {} : { clienteIndicadorId: '' }),
-                    }));
-                  }}
-                >
-                  <option value="NAO">Nao</option>
-                  <option value="SIM">Sim</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Cliente Indicador {form.vendaPorIndicacao ? '*' : '(opcional)'}</label>
-                <select
-                  className="form-control"
-                  value={form.clienteIndicadorId}
-                  onChange={f('clienteIndicadorId')}
-                  disabled={!form.vendaPorIndicacao}
-                >
-                  <option value="">Selecione...</option>
-                  {clientes
-                    .filter((c) => Number(c.id) !== Number(form.clienteId))
-                    .map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                {form.vendaPorIndicacao && Number(form.clienteIndicadorId) === Number(form.clienteId) && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--danger)' }}>Cliente nao pode indicar a si mesmo.</div>
-                )}
-              </div>
-              <div className="form-group">
-                <label>ID Reserva *</label>
-                <input className="form-control" maxLength={20} value={form.idReserva} onChange={f('idReserva')} placeholder="Ex: ABC123456" />
-              </div>
-              <div className="form-group">
-                <label>Tipo de Serviço *</label>
-                <select className="form-control" value={form.tipoServico} onChange={f('tipoServico')}>
-                  {TIPOS.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select
-                  className="form-control"
-                  value={form.status}
-                  onChange={f('status')}
-                  disabled={!isAdmin && editId && form.status === 'PAGA'}
-                >
-                  {STATUS_VENDA.map((s) => <option key={s}>{s}</option>)}
-                </select>
-                {!isAdmin && editId && form.status === 'PAGA' && (
-                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
-                    Venda paga: somente ADMIN pode alterar o status.
-                  </div>
-                )}
-              </div>
-              <div className="form-group form-full">
-                <label>Descrição *</label>
-                <textarea className="form-control" rows={2} value={form.descricao} onChange={f('descricao')} placeholder="Descreva o pacote/serviço..." />
-              </div>
-              <div className="form-group form-full">
-                <label>Observação</label>
-                <textarea className="form-control" rows={2} value={form.observacoes} onChange={f('observacoes')} placeholder="Observações sobre a viagem..." />
-              </div>
-              <div className="form-group form-full">
-                <label>Anexo PDF</label>
-                <input
-                  type="file"
-                  className="form-control"
-                  accept="application/pdf,.pdf"
-                  onChange={(e) => setAnexoPdfFile(e.target.files?.[0] || null)}
-                />
-                <div style={{marginTop:6,fontSize:12,color:'var(--text-muted)'}}>
-                  {anexoPdfFile
-                    ? `Novo arquivo selecionado: ${anexoPdfFile.name}`
-                    : anexoAtual
-                      ? `Arquivo atual: ${anexoAtual.nome}`
-                      : 'Nenhum PDF anexado.'}
+
+            <div className="venda-modal-meta">
+              <span>Agente responsavel: <strong>{usuario?.nome || 'Usuario logado'}</strong></span>
+              <span>Campos obrigatorios: Cliente, Operadora, ID Reserva, Tipo, Descricao, Valor Total e Comissao.</span>
+            </div>
+
+            <div className="venda-modal-stepper">
+              <button
+                type="button"
+                className={`venda-step ${etapaModalVenda === 1 ? 'active' : ''}`}
+                onClick={() => setEtapaModalVenda(1)}
+              >
+                1. Dados principais
+              </button>
+              <button
+                type="button"
+                className={`venda-step ${etapaModalVenda === 2 ? 'active' : ''}`}
+                onClick={() => !bloqueioProximaEtapa && setEtapaModalVenda(2)}
+                disabled={bloqueioProximaEtapa}
+              >
+                2. Financeiro e anexos
+              </button>
+            </div>
+
+            {etapaModalVenda === 1 && (
+              <div className="venda-modal-grid">
+                <div className="form-full venda-modal-section-title">Dados da venda</div>
+                <div className="form-group">
+                  <label>Cliente *</label>
+                  <select className="form-control" value={form.clienteId} onChange={f('clienteId')}>
+                    <option value="">Selecione...</option>
+                    {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
                 </div>
-                {editId && anexoAtual && (
-                  <div style={{display:'flex',gap:8,marginTop:8}}>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => abrirAnexoPdf(editId)}>
-                      Abrir PDF
-                    </button>
-                    <button type="button" className="btn btn-sm btn-danger" onClick={() => removerAnexoPdf(editId)}>
-                      Remover PDF
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="form-group">
-                <label>Valor Total (R$) *</label>
-                <input type="number" step="0.01" className="form-control" value={form.valorTotal} onChange={f('valorTotal')} placeholder="0,00" />
-              </div>
-              <div className="form-group">
-                <label>Valor da Comissão (R$) *</label>
-                <input type="number" step="0.01" className="form-control" value={form.valorComissao} onChange={f('valorComissao')} placeholder="0,00" />
-              </div>
-              <div className="form-group">
-                <label>Início da Viagem</label>
-                <input type="date" className="form-control" value={form.dataViagemInicio} onChange={f('dataViagemInicio')} />
-              </div>
-              <div className="form-group">
-                <label>Fim da Viagem</label>
-                <input type="date" className="form-control" value={form.dataViagemFim} onChange={f('dataViagemFim')} />
-              </div>
-
-              <div className="form-group form-full">
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                  <label>Formas de Pagamento {pagamentosObrigatorios ? '*' : ''}</label>
-                  {pagamentosObrigatorios && <button type="button" className="btn btn-sm btn-outline" onClick={adicionarPagamento}>+ Forma</button>}
+                <div className="form-group">
+                  <label>Operadora *</label>
+                  <select className="form-control" value={form.operadoraId} onChange={f('operadoraId')}>
+                    <option value="">Selecione...</option>
+                    {operadoras.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                  </select>
                 </div>
-
-                {!pagamentosObrigatorios ? (
-                  <div style={{fontSize:12,color:'var(--text-muted)'}}>
-                    O preenchimento de forma de pagamento, valor e vencimento so e obrigatorio quando o status for PAGA.
-                  </div>
-                ) : (
-                  <>
-                    {form.pagamentos.map((pagamento, idx) => (
-                      <div key={idx} style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr auto',gap:8,marginBottom:8}}>
-                        <select
-                          className="form-control"
-                          value={pagamento.formaPagamento}
-                          onChange={(e) => atualizarPagamento(idx, 'formaPagamento', e.target.value)}
-                        >
-                          {FORMAS_PAGAMENTO.map((forma) => <option key={forma} value={forma}>{fmtFormaPagamento(forma)}</option>)}
-                        </select>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control"
-                          value={pagamento.valor}
-                          onChange={(e) => atualizarPagamento(idx, 'valor', e.target.value)}
-                          placeholder="Valor"
-                        />
-                        <input
-                          type="date"
-                          className="form-control"
-                          value={pagamento.dataVencimento}
-                          onChange={(e) => atualizarPagamento(idx, 'dataVencimento', e.target.value)}
-                        />
-                        <button type="button" className="btn btn-sm btn-danger" onClick={() => removerPagamento(idx)} disabled={form.pagamentos.length === 1}>-</button>
-                      </div>
-                    ))}
-
-                    <div style={{fontSize:12,color:divergenciaPagamentos ? 'var(--danger)' : 'var(--text-muted)'}}>
-                      Soma pagamentos: {fmtCurr(somaPagamentos)} | Total comissao: {fmtCurr(totalComissao)}
+                <div className="form-group">
+                  <label>Tipo de Serviço *</label>
+                  <select className="form-control" value={form.tipoServico} onChange={f('tipoServico')}>
+                    {TIPOS.map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>ID Reserva *</label>
+                  <input className="form-control" maxLength={20} value={form.idReserva} onChange={f('idReserva')} placeholder="Ex: ABC123456" />
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <select
+                    className="form-control"
+                    value={form.status}
+                    onChange={f('status')}
+                    disabled={!isAdmin && editId && form.status === 'PAGA'}
+                  >
+                    {STATUS_VENDA.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                  {!isAdmin && editId && form.status === 'PAGA' && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                      Venda paga: somente ADMIN pode alterar o status.
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
+                <div className="form-group">
+                  <label>Venda por indicação?</label>
+                  <select
+                    className="form-control"
+                    value={form.vendaPorIndicacao ? 'SIM' : 'NAO'}
+                    onChange={(e) => {
+                      const ativo = e.target.value === 'SIM';
+                      setForm((prev) => ({
+                        ...prev,
+                        vendaPorIndicacao: ativo,
+                        ...(ativo ? {} : { clienteIndicadorId: '' }),
+                      }));
+                    }}
+                  >
+                    <option value="NAO">Nao</option>
+                    <option value="SIM">Sim</option>
+                  </select>
+                </div>
+                <div className="form-group form-full">
+                  <label>Cliente Indicador {form.vendaPorIndicacao ? '*' : '(opcional)'}</label>
+                  <select
+                    className="form-control"
+                    value={form.clienteIndicadorId}
+                    onChange={f('clienteIndicadorId')}
+                    disabled={!form.vendaPorIndicacao}
+                  >
+                    <option value="">Selecione...</option>
+                    {clientes
+                      .filter((c) => Number(c.id) !== Number(form.clienteId))
+                      .map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                  {form.vendaPorIndicacao && Number(form.clienteIndicadorId) === Number(form.clienteId) && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--danger)' }}>Cliente nao pode indicar a si mesmo.</div>
+                  )}
+                </div>
+                <div className="form-group form-full">
+                  <label>Descrição *</label>
+                  <textarea className="form-control" rows={2} value={form.descricao} onChange={f('descricao')} placeholder="Descreva o pacote/serviço..." />
+                </div>
+                <div className="form-group form-full">
+                  <label>Observação</label>
+                  <textarea className="form-control" rows={1} value={form.observacoes} onChange={f('observacoes')} placeholder="Observações sobre a viagem..." />
+                </div>
               </div>
-            </div>
+            )}
+
+            {etapaModalVenda === 2 && (
+              <div className="venda-modal-grid">
+                <div className="form-full venda-modal-section-title">Valores e viagem</div>
+                <div className="form-group">
+                  <label>Valor Total (R$) *</label>
+                  <input type="number" step="0.01" className="form-control" value={form.valorTotal} onChange={f('valorTotal')} placeholder="0,00" />
+                </div>
+                <div className="form-group">
+                  <label>Valor da Comissão (R$) *</label>
+                  <input type="number" step="0.01" className="form-control" value={form.valorComissao} onChange={f('valorComissao')} placeholder="0,00" />
+                </div>
+                <div className="form-group">
+                  <label>Início da Viagem</label>
+                  <input type="date" className="form-control" value={form.dataViagemInicio} onChange={f('dataViagemInicio')} />
+                </div>
+                <div className="form-group">
+                  <label>Fim da Viagem</label>
+                  <input type="date" className="form-control" value={form.dataViagemFim} onChange={f('dataViagemFim')} />
+                </div>
+
+                <div className="form-full venda-modal-section-title">Anexo e pagamento</div>
+                <div className="form-group form-full">
+                  <label>Anexo PDF</label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => setAnexoPdfFile(e.target.files?.[0] || null)}
+                  />
+                  <div style={{marginTop:6,fontSize:12,color:'var(--text-muted)'}}>
+                    {anexoPdfFile
+                      ? `Novo arquivo selecionado: ${anexoPdfFile.name}`
+                      : anexoAtual
+                        ? `Arquivo atual: ${anexoAtual.nome}`
+                        : 'Nenhum PDF anexado.'}
+                  </div>
+                  {editId && anexoAtual && (
+                    <div style={{display:'flex',gap:8,marginTop:8}}>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={() => abrirAnexoPdf(editId)}>
+                        Abrir PDF
+                      </button>
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => removerAnexoPdf(editId)}>
+                        Remover PDF
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group form-full">
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                    <label>Formas de Pagamento {pagamentosObrigatorios ? '*' : ''}</label>
+                    {pagamentosObrigatorios && <button type="button" className="btn btn-sm btn-outline" onClick={adicionarPagamento}>+ Forma</button>}
+                  </div>
+
+                  {!pagamentosObrigatorios ? (
+                    <div style={{fontSize:12,color:'var(--text-muted)'}}>
+                      O preenchimento de forma de pagamento, valor e vencimento so e obrigatorio quando o status for PAGA.
+                    </div>
+                  ) : (
+                    <>
+                      {form.pagamentos.map((pagamento, idx) => (
+                        <div key={idx} className="venda-pagamento-row">
+                          <select
+                            className="form-control"
+                            value={pagamento.formaPagamento}
+                            onChange={(e) => atualizarPagamento(idx, 'formaPagamento', e.target.value)}
+                          >
+                            {FORMAS_PAGAMENTO.map((forma) => <option key={forma} value={forma}>{fmtFormaPagamento(forma)}</option>)}
+                          </select>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="form-control"
+                            value={pagamento.valor}
+                            onChange={(e) => atualizarPagamento(idx, 'valor', e.target.value)}
+                            placeholder="Valor"
+                          />
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={pagamento.dataVencimento}
+                            onChange={(e) => atualizarPagamento(idx, 'dataVencimento', e.target.value)}
+                          />
+                          <button type="button" className="btn btn-sm btn-danger" onClick={() => removerPagamento(idx)} disabled={form.pagamentos.length === 1}>-</button>
+                        </div>
+                      ))}
+
+                      <div style={{fontSize:12,color:divergenciaPagamentos ? 'var(--danger)' : 'var(--text-muted)'}}>
+                        Soma pagamentos: {fmtCurr(somaPagamentos)} | Total comissao: {fmtCurr(totalComissao)}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={salvar} disabled={bloqueioSalvar}>{saving ? 'Salvando...' : 'Salvar'}</button>
-            </div>
-            <div style={{marginTop:8,fontSize:12,color:'var(--text-muted)'}}>
-              Agente responsavel: <strong>{usuario?.nome || 'Usuario logado'}</strong> (definido automaticamente)
+              <button className="btn btn-outline" onClick={() => { setModal(false); setEtapaModalVenda(1); }}>Cancelar</button>
+              {etapaModalVenda === 1 && (
+                <button className="btn btn-primary" onClick={() => setEtapaModalVenda(2)} disabled={bloqueioProximaEtapa}>Proxima</button>
+              )}
+              {etapaModalVenda === 2 && (
+                <>
+                  <button className="btn btn-outline" onClick={() => setEtapaModalVenda(1)}>Voltar</button>
+                  <button className="btn btn-primary" onClick={salvar} disabled={bloqueioSalvar}>{saving ? 'Salvando...' : 'Salvar'}</button>
+                </>
+              )}
             </div>
           </div>
         </div>

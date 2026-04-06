@@ -95,12 +95,13 @@ class ClienteController {
 
   async atualizar(req, res, next) {
     try {
+      const cpfEnviadoNoBody = Object.prototype.hasOwnProperty.call(req.body || {}, 'cpf');
       const data = clienteSchema.partial().parse(req.body);
       const payload = {
         ...data,
         ...(data.telefone !== undefined ? { telefone: somenteDigitos(data.telefone) } : {}),
-        ...(data.cpf !== undefined ? { cpf: data.cpf ? somenteDigitos(data.cpf) : undefined } : {}),
-        dataNascimento: data.dataNascimento ? new Date(data.dataNascimento) : undefined,
+        ...(cpfEnviadoNoBody ? { cpf: data.cpf ? somenteDigitos(data.cpf) : '' } : {}),
+        ...(data.dataNascimento !== undefined ? { dataNascimento: data.dataNascimento ? new Date(data.dataNascimento) : null } : {}),
       };
 
       const cliente = await clienteService.atualizar(req.params.id, {

@@ -2,13 +2,27 @@ const clienteRepository = require('../repositories/cliente.repository');
 const prisma = require('../config/database');
 const auditoriaService = require('./auditoria.service');
 
+const CPF_TECNICO_TAG = '[CPF_TECNICO]';
+
 /**
  * Serviço de Clientes
  */
 class ClienteService {
   gerarCpfTecnico() {
-    const base = `${Date.now()}${Math.floor(Math.random() * 1000)}`.replace(/\D/g, '');
-    return base.slice(-11).padStart(11, '0');
+    const base = `${Date.now()}${Math.floor(Math.random() * 100000)}`.replace(/\D/g, '');
+    return `000${base.slice(-8).padStart(8, '0')}`;
+  }
+
+  adicionarTagCpfTecnico(observacoes) {
+    const texto = String(observacoes || '').trim();
+    if (!texto) return CPF_TECNICO_TAG;
+    if (texto.includes(CPF_TECNICO_TAG)) return texto;
+    return `${CPF_TECNICO_TAG} ${texto}`;
+  }
+
+  removerTagCpfTecnico(observacoes) {
+    const texto = String(observacoes || '');
+    return texto.replace(CPF_TECNICO_TAG, '').trim();
   }
 
   async gerarCpfTecnicoUnico() {
@@ -53,7 +67,12 @@ class ClienteService {
       throw err;
     }
 
-    const cpf = data?.cpf ? String(data.cpf).trim() : await this.gerarCpfTecnicoUnico();
+    const cpfInformado = data?.cpf ? String(data.cpf).trim() : '';
+    const cpf = cpfInformado || await this.gerarCpfTecnicoUnico();
+
+    const observacoes = cpfInformado
+      ? this.removerTagCpfTecnico(data?.observacoes)
+      : this.adicionarTagCpfTecnico(data?.observacoes);
 
     // Verifica se CPF já existe
     const cpfExistente = await clienteRepository.findByCpf(cpf);
@@ -68,11 +87,12 @@ class ClienteService {
       nome,
       telefone,
       cpf,
+      observacoes,
     });
   }
 
   async atualizar(id, data) {
-    await this.buscarPorId(id);
+    const clienteAtual = await this.buscarPorId(id);
 
     if (data.nome !== undefined) {
       const nome = String(data.nome || '').trim();
@@ -94,8 +114,21 @@ class ClienteService {
       data.telefone = telefone;
     }
 
-    // Se está atualizando CPF, verifica duplicidade
-    if (data.cpf) {
+    // Se está atualizando CPF, trata limpeza e verifica duplicidade
+    if (data.cpf !== undefined) {
+      const cpfNormalizado = String(data.cpf || '').trim();
+      data.cpf = cpfNormalizado || await this.gerarCpfTecnicoUnico();
+
+      if (cpfNormalizado) {
+        data.observacoes = this.removerTagCpfTecnico(
+          data.observacoes !== undefined ? data.observacoes : clienteAtual.observacoes
+        );
+      } else {
+        data.observacoes = this.adicionarTagCpfTecnico(
+          data.observacoes !== undefined ? data.observacoes : clienteAtual.observacoes
+        );
+      }
+
       const cpfExistente = await clienteRepository.findByCpf(data.cpf);
       if (cpfExistente && cpfExistente.id !== Number(id)) {
         const err = new Error('CPF já cadastrado por outro cliente.');

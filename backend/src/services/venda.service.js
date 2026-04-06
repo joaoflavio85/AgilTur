@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const vendaRepository = require('../repositories/venda.repository');
 const auditoriaService = require('./auditoria.service');
+const { getTenantId } = require('../config/tenant-context');
 
 const FORMAS_PAGAMENTO = ['CARTAO', 'BOLETO', 'PIX', 'OPERADORA'];
 const PERCENTUAL_BONIFICACAO_PADRAO = 5;
@@ -67,6 +68,8 @@ class VendaService {
   }
 
   async sincronizarIndicacaoVenda(tx, venda, usuario) {
+    const tenantId = getTenantId();
+
     if (!venda.vendaPorIndicacao || !venda.clienteIndicadorId) {
       await tx.indicacaoCliente.deleteMany({ where: { vendaId: venda.id } });
       return;
@@ -96,6 +99,7 @@ class VendaService {
 
     await tx.indicacaoCliente.create({
       data: {
+        ...(tenantId ? { empresaId: tenantId } : {}),
         clienteIndicadorId: Number(venda.clienteIndicadorId),
         clienteIndicadoId: Number(venda.clienteId),
         vendaId: venda.id,
@@ -205,6 +209,8 @@ class VendaService {
   }
 
   async sincronizarContasReceberComissao(tx, vendaId, pagamentos) {
+    const tenantId = getTenantId();
+
     await tx.contaReceber.deleteMany({
       where: {
         vendaId,
@@ -218,6 +224,7 @@ class VendaService {
 
     await tx.contaReceber.createMany({
       data: pagamentos.map((parcela) => ({
+        ...(tenantId ? { empresaId: tenantId } : {}),
         vendaId,
         valor: parcela.valor,
         formaPagamento: parcela.formaPagamento,
@@ -301,6 +308,8 @@ class VendaService {
     }
 
     return prisma.$transaction(async (tx) => {
+      const tenantId = getTenantId();
+
       const operadora = await tx.operadora.findUnique({ where: { id: Number(data.operadoraId) } });
       if (!operadora) {
         const err = new Error('Operadora nao encontrada.');
@@ -316,6 +325,7 @@ class VendaService {
 
       const vendaCriada = await tx.venda.create({
         data: {
+          ...(tenantId ? { empresaId: tenantId } : {}),
           ...data,
           clienteId: Number(data.clienteId),
           clienteIndicadorId: indicadorId,
@@ -326,7 +336,14 @@ class VendaService {
           valorComissao,
           dataViagemInicio: data.dataViagemInicio ? new Date(data.dataViagemInicio) : null,
           dataViagemFim: data.dataViagemFim ? new Date(data.dataViagemFim) : null,
-          pagamentos: pagamentos.length ? { create: pagamentos } : undefined,
+          pagamentos: pagamentos.length
+            ? {
+                create: pagamentos.map((pagamento) => ({
+                  ...pagamento,
+                  ...(tenantId ? { empresaId: tenantId } : {}),
+                })),
+              }
+            : undefined,
         },
       });
 
@@ -336,7 +353,7 @@ class VendaService {
 
       await this.sincronizarIndicacaoVenda(tx, vendaCriada, usuario);
 
-      const vendaCompleta = await tx.venda.findUnique({
+      const vendaCompleta = await tx.venda.findFirst({
         where: { id: vendaCriada.id },
         include: {
           cliente: { select: { id: true, nome: true, cpf: true } },
@@ -419,6 +436,8 @@ class VendaService {
     );
 
     return prisma.$transaction(async (tx) => {
+      const tenantId = getTenantId();
+
       const clienteIdFinal = data.clienteId !== undefined ? Number(data.clienteId) : Number(vendaAtual.clienteId);
       const indicadorIdInformado = data.clienteIndicadorId !== undefined
         ? data.clienteIndicadorId
@@ -453,7 +472,10 @@ class VendaService {
           ...(data.pagamentos !== undefined && {
             pagamentos: {
               deleteMany: {},
-              create: pagamentosFinais,
+              create: pagamentosFinais.map((pagamento) => ({
+                ...pagamento,
+                ...(tenantId ? { empresaId: tenantId } : {}),
+              })),
             },
           }),
         },
@@ -474,7 +496,7 @@ class VendaService {
         });
       }
 
-      const vendaCompleta = await tx.venda.findUnique({
+      const vendaCompleta = await tx.venda.findFirst({
         where: { id: vendaAtualizada.id },
         include: {
           cliente: { select: { id: true, nome: true, cpf: true } },

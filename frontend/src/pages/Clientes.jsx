@@ -25,6 +25,23 @@ const formatarTelefone = (v) => {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 };
 
+const isCpfTecnico = (cliente) => {
+  const cpf = somenteDigitos(cliente?.cpf || '');
+  const observacoes = String(cliente?.observacoes || '');
+  return (cpf.length === 11 && cpf.startsWith('000')) || observacoes.includes('[CPF_TECNICO]');
+};
+
+const mapCampoLabel = {
+  nome: 'Nome',
+  cpf: 'CPF',
+  rg: 'RG',
+  dataNascimento: 'Data de nascimento',
+  telefone: 'Telefone',
+  email: 'Email',
+  endereco: 'Endereco',
+  observacoes: 'Observacoes',
+};
+
 export default function Clientes() {
   const { isAdmin } = useAuth();
   const [clientes, setClientes] = useState([]);
@@ -93,7 +110,7 @@ export default function Clientes() {
         ...form,
         nome: String(form.nome || '').trim(),
         telefone: normalizarTelefone(form.telefone),
-        cpf: somenteDigitos(form.cpf) || undefined,
+        cpf: somenteDigitos(form.cpf),
       };
 
       if (editId) await api.put(`/clientes/${editId}`, payload);
@@ -101,7 +118,19 @@ export default function Clientes() {
       setModal(false);
       carregar(search);
     } catch (e) {
-      setError(e.response?.data?.error || 'Erro ao salvar.');
+      const apiError = e.response?.data;
+      const detalhes = Array.isArray(apiError?.detalhes) ? apiError.detalhes : [];
+
+      if (detalhes.length) {
+        const mensagens = detalhes.map((d) => {
+          const campo = d?.campo ? (mapCampoLabel[d.campo] || d.campo) : 'Campo';
+          const mensagem = d?.mensagem || 'Valor invalido.';
+          return `${campo}: ${mensagem}`;
+        });
+        setError(mensagens.join(' | '));
+      } else {
+        setError(apiError?.error || 'Erro ao salvar.');
+      }
     } finally { setSaving(false); }
   };
 
@@ -246,6 +275,7 @@ export default function Clientes() {
   };
 
   const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const cpfTecnicoEmEdicao = editId && isCpfTecnico(form);
 
   return (
     <div>
@@ -281,15 +311,20 @@ export default function Clientes() {
               <tr><td colSpan={6}><div className="loading"><div className="spinner" /></div></td></tr>
             ) : clientes.length === 0 ? (
               <tr><td colSpan={6}><div className="empty-state">Nenhum cliente encontrado.</div></td></tr>
-            ) : clientes.map((c) => (
-              <tr key={c.id}>
+            ) : clientes.map((c) => {
+              const cpfTecnico = isCpfTecnico(c);
+              return (
+              <tr key={c.id} style={cpfTecnico ? { background: '#fff7e6' } : undefined}>
                 <td>
                   <strong>{c.nome}</strong>
                   {rankingMap.get(Number(c.id))?.topIndicador && (
                     <span className="badge badge-warning" style={{ marginLeft: 8 }}>Top Indicador</span>
                   )}
+                  {cpfTecnico && (
+                    <span className="badge badge-danger" style={{ marginLeft: 8 }}>CPF tecnico</span>
+                  )}
                 </td>
-                <td>{c.cpf ? formatarCpf(c.cpf) : '—'}</td>
+                <td style={cpfTecnico ? { color: '#b45309', fontWeight: 700 } : undefined}>{c.cpf ? formatarCpf(c.cpf) : '—'}</td>
                 <td>{c.telefone ? formatarTelefone(c.telefone) : '—'}</td>
                 <td>{c.email || '—'}</td>
                 <td>{new Date(c.dataCadastro).toLocaleDateString('pt-BR')}</td>
@@ -302,7 +337,7 @@ export default function Clientes() {
                   </div>
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       </div>
@@ -316,6 +351,12 @@ export default function Clientes() {
             </div>
 
             {error && <div className="alert alert-error">{error}</div>}
+
+            {cpfTecnicoEmEdicao && (
+              <div className="alert" style={{ background: '#fff7e6', borderColor: '#fed7aa', color: '#9a3412' }}>
+                Este cliente esta com <strong>CPF tecnico</strong>. Cadastre o CPF correto para regularizar o registro.
+              </div>
+            )}
 
             <div className="form-grid">
               <div className="form-group form-full">

@@ -22,9 +22,11 @@ const authMiddleware = (req, res, next) => {
       return res.status(403).json({ error: 'Token nao pertence ao tenant do subdominio atual.' });
     }
 
-    if (!req.tenant?.id && decoded?.tenantId) {
+    const tenantIdToken = decoded?.tenantId || decoded?.empresaId || null;
+
+    if (!req.tenant?.id && tenantIdToken) {
       req.tenant = {
-        id: Number(decoded.tenantId),
+        id: Number(tenantIdToken),
         subdominio: decoded.tenantSubdominio || null,
       };
     }
