@@ -8,6 +8,7 @@ const navItems = [
   { to: '/agenda', label: 'Agenda', icon: '🗓️' },
   { to: '/clientes', label: 'Cliente', icon: '👥' },
   { to: '/propostas', label: 'Propostas', icon: '📝' },
+  { to: '/propostas-followup', label: 'Follow-up Propostas', icon: '⏰' },
   { to: '/creditos', label: 'Creditos', icon: '🎟️' },
   { to: '/vendas', label: 'Vendas', icon: '💼' },
   { to: '/pos-venda', label: 'Pos Vendas', icon: '⭐' },

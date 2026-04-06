@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 
 const STATUS = ['PENDENTE','PAGO','ATRASADO'];
+const STATUS_PADRAO_FILTRO = ['PENDENTE', 'ATRASADO'];
 const statusBadge = { PENDENTE:'badge-warning', PAGO:'badge-success', ATRASADO:'badge-danger' };
 const fmtCurr = (v) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
@@ -13,18 +14,24 @@ const toDateInputValue = (date) => {
   return `${y}-${m}-${d}`;
 };
 
-export default function ContasPagar() {
+const getPeriodoPadrao = () => {
   const hoje = new Date();
-  const inicioMesAtual = toDateInputValue(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-  const fimMesAtual = toDateInputValue(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
+  return {
+    inicio: toDateInputValue(new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1)),
+    fim: toDateInputValue(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)),
+  };
+};
+
+export default function ContasPagar() {
+  const periodoPadrao = getPeriodoPadrao();
 
   const [contas, setContas] = useState([]);
   const [centrosCusto, setCentrosCusto] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState(STATUS_PADRAO_FILTRO);
   const [filtroCentroCustoId, setFiltroCentroCustoId] = useState('');
-  const [filtroVencInicio, setFiltroVencInicio] = useState(inicioMesAtual);
-  const [filtroVencFim, setFiltroVencFim] = useState(fimMesAtual);
+  const [filtroVencInicio, setFiltroVencInicio] = useState(periodoPadrao.inicio);
+  const [filtroVencFim, setFiltroVencFim] = useState(periodoPadrao.fim);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(empty);
   const [editId, setEditId] = useState(null);
@@ -36,7 +43,6 @@ export default function ContasPagar() {
     try {
       const r = await api.get('/contas-pagar', {
         params: {
-          status: filtroStatus || undefined,
           centroCustoId: filtroCentroCustoId || undefined,
           dataVencimentoInicio: filtroVencInicio || undefined,
           dataVencimentoFim: filtroVencFim || undefined,
@@ -57,7 +63,7 @@ export default function ContasPagar() {
 
   useEffect(() => {
     carregar();
-  }, [filtroStatus, filtroCentroCustoId, filtroVencInicio, filtroVencFim]);
+  }, [filtroCentroCustoId, filtroVencInicio, filtroVencFim]);
 
   const abrirCriar = () => { setForm(empty); setEditId(null); setError(''); setModal(true); };
   const abrirEditar = (c) => {
@@ -89,7 +95,17 @@ export default function ContasPagar() {
   };
 
   const f = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const total = contas.filter(c => c.status !== 'PAGO').reduce((a, c) => a + Number(c.valor), 0);
+  const toggleStatus = (status) => {
+    setFiltroStatus((atual) => {
+      if (atual.includes(status)) return atual.filter((item) => item !== status);
+      return [...atual, status];
+    });
+  };
+
+  const contasFiltradas = contas.filter((c) => (
+    filtroStatus.length === 0 ? true : filtroStatus.includes(c.status)
+  ));
+  const total = contasFiltradas.filter(c => c.status !== 'PAGO').reduce((a, c) => a + Number(c.valor), 0);
 
   return (
     <div>
@@ -104,10 +120,18 @@ export default function ContasPagar() {
       </div>
 
       <div className="filters">
-        <select className="form-control" style={{width:180}} value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
-          <option value="">Todos</option>
-          {STATUS.map((s) => <option key={s}>{s}</option>)}
-        </select>
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'0 8px',minHeight:42,border:'1px solid var(--border)',borderRadius:10,background:'var(--surface2)'}}>
+          {STATUS.map((s) => (
+            <label key={s} style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+              <input
+                type="checkbox"
+                checked={filtroStatus.includes(s)}
+                onChange={() => toggleStatus(s)}
+              />
+              {s}
+            </label>
+          ))}
+        </div>
         <select className="form-control" style={{width:260}} value={filtroCentroCustoId} onChange={(e) => setFiltroCentroCustoId(e.target.value)}>
           <option value="">Todos os centros de custo</option>
           {centrosCusto.map((centro) => (
@@ -133,24 +157,14 @@ export default function ContasPagar() {
         <button
           className="btn btn-outline"
           onClick={() => {
-            setFiltroStatus('');
+            const periodo = getPeriodoPadrao();
+            setFiltroStatus(STATUS_PADRAO_FILTRO);
             setFiltroCentroCustoId('');
-            setFiltroVencInicio('');
-            setFiltroVencFim('');
+            setFiltroVencInicio(periodo.inicio);
+            setFiltroVencFim(periodo.fim);
           }}
         >
           Limpar filtros
-        </button>
-        <button
-          className="btn btn-outline"
-          onClick={() => {
-            setFiltroStatus('');
-            setFiltroCentroCustoId('');
-            setFiltroVencInicio(inicioMesAtual);
-            setFiltroVencFim(fimMesAtual);
-          }}
-        >
-          Mes atual
         </button>
       </div>
 
@@ -161,8 +175,8 @@ export default function ContasPagar() {
           </thead>
           <tbody>
             {loading ? <tr><td colSpan={7}><div className="loading"><div className="spinner"/></div></td></tr>
-            : contas.length === 0 ? <tr><td colSpan={7}><div className="empty-state">Nenhuma conta encontrada.</div></td></tr>
-            : contas.map((c) => (
+            : contasFiltradas.length === 0 ? <tr><td colSpan={7}><div className="empty-state">Nenhuma conta encontrada.</div></td></tr>
+            : contasFiltradas.map((c) => (
               <tr key={c.id}>
                 <td>{c.centroCusto?.descricao || '-'}</td>
                 <td><strong>{c.descricao}</strong></td>

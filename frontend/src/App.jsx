@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Clientes from './pages/Clientes';
 import Operadoras from './pages/Operadoras';
 import Propostas from './pages/Propostas';
+import PropostasFollowup from './pages/PropostasFollowup';
 import Vendas from './pages/Vendas';
 import ContasReceber from './pages/ContasReceber';
 import ContasPagar from './pages/ContasPagar';
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="clientes" element={<Clientes />} />
         <Route path="operadoras" element={usuario?.perfil === 'ADMIN' ? <Operadoras /> : <Navigate to="/" replace />} />
         <Route path="propostas" element={<Propostas />} />
+        <Route path="propostas-followup" element={<PropostasFollowup />} />
         <Route path="creditos" element={<CreditosClientes />} />
         <Route path="propostas/:propostaId/orcamentos" element={<PropostaOrcamentosPage />} />
         <Route path="vendas" element={<Vendas />} />
